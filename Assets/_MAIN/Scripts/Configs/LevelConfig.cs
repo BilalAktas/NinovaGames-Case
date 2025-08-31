@@ -37,12 +37,14 @@ namespace NinovaGamesCase.Core
         [SerializeField] private Vector2Int _nodeSize;
         [SerializeField] private LevelBlockData[] _levelBlockData;
         [SerializeField] private LevelDoorData[] _levelDoorData;
+        [SerializeField] private int _time;
         
         
         public Vector2Int GridSize => _gridSize;
         public Vector2Int NodeSize => _nodeSize;
         public LevelBlockData[] LevelBlockData => _levelBlockData;
         public LevelDoorData[] LevelDoorData => _levelDoorData;
+        public int Time => _time;
         
     }   
 }

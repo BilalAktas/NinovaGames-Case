@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using NinovaGamesCase.Helpers;
+using NinovaGamesCase.Managers;
 using UnityEngine;
 
 namespace NinovaGamesCase.Core
@@ -17,8 +18,6 @@ namespace NinovaGamesCase.Core
     {
         private Node[,] _grid;
         public Node[,] GetGrid() => _grid;
-        [SerializeField] private LevelConfig _levelConfig;
-        public LevelConfig LevelConfig => _levelConfig;
 
         [SerializeField] private GameObject _nodePrefab;
         [SerializeField] private GameObject _doorPrefab;
@@ -29,29 +28,33 @@ namespace NinovaGamesCase.Core
 
         private List<Door> _spawnedDoors = new();
 
-        private void Start()
-        {
-            CreateGrid();
-        }
 
-        private void CreateGrid()
+        public void ClearGrid()
         {
-            _grid = new Node[_levelConfig.GridSize.x, _levelConfig.GridSize.y];
+            foreach (Transform child in transform)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+        
+        public void CreateGrid()
+        {
+            _grid = new Node[LevelManager.CurrentConfig.GridSize.x, LevelManager.CurrentConfig.GridSize.y];
 
             var center = Vector2.zero;
-            var totalSize = new Vector2(_levelConfig.GridSize.x * _levelConfig.NodeSize.x,
-                _levelConfig.GridSize.y * _levelConfig.NodeSize.y);
+            var totalSize = new Vector2(LevelManager.CurrentConfig.GridSize.x * LevelManager.CurrentConfig.NodeSize.x,
+                LevelManager.CurrentConfig.GridSize.y * LevelManager.CurrentConfig.NodeSize.y);
 
-            var bottomLeft = center - new Vector2(totalSize.x, totalSize.y) / 2 + new Vector2(_levelConfig.NodeSize.x
-                , _levelConfig.NodeSize.y) / 2;
+            var bottomLeft = center - new Vector2(totalSize.x, totalSize.y) / 2 + new Vector2(LevelManager.CurrentConfig.NodeSize.x
+                , LevelManager.CurrentConfig.NodeSize.y) / 2;
 
-            for (var x = 0; x < _levelConfig.GridSize.x; x++)
+            for (var x = 0; x < LevelManager.CurrentConfig.GridSize.x; x++)
             {
-                for (var y = 0; y < _levelConfig.GridSize.y; y++)
+                for (var y = 0; y < LevelManager.CurrentConfig.GridSize.y; y++)
                 {
                     var worldPosition = Helpers.Helpers.Vector2ToVector3(bottomLeft +
-                                                                         new Vector2(x * _levelConfig.NodeSize.x,
-                                                                             y * _levelConfig.NodeSize.y));
+                                                                         new Vector2(x * LevelManager.CurrentConfig.NodeSize.x,
+                                                                             y * LevelManager.CurrentConfig.NodeSize.y));
                     worldPosition.y = -.5f;
                     var gridPosition = new Vector2Int(x, y);
                     var node = new Node(gridPosition, worldPosition);
@@ -63,7 +66,7 @@ namespace NinovaGamesCase.Core
                 }
             }
 
-            foreach (var levelDoorData in _levelConfig.LevelDoorData)
+            foreach (var levelDoorData in LevelManager.CurrentConfig.LevelDoorData)
             {
                 var doorClone = Instantiate(_doorPrefab, transform);
                 var doorS = doorClone.GetComponent<Door>();
@@ -73,7 +76,7 @@ namespace NinovaGamesCase.Core
             }
 
 
-            foreach (var data in _levelConfig.LevelBlockData)
+            foreach (var data in LevelManager.CurrentConfig.LevelBlockData)
             {
                 var blockClone = Instantiate(_blockPrefab, transform);
                 blockClone.GetComponent<Block>().Initialize(data);
@@ -95,18 +98,18 @@ namespace NinovaGamesCase.Core
 
                         break;
                     case 1:
-                        var node1 = _grid[0, _levelConfig.GridSize.y - 1];
+                        var node1 = _grid[0, LevelManager.CurrentConfig.GridSize.y - 1];
                         pos = node1.WorldPosition + (Vector3.left * 1 + Vector3.forward * 1);
                         break;
 
                     case 2:
-                        var node2 = _grid[_levelConfig.GridSize.x - 1, 0];
+                        var node2 = _grid[LevelManager.CurrentConfig.GridSize.x - 1, 0];
                         pos = node2.WorldPosition + (Vector3.right * 1 + Vector3.back * 1);
                         rot = Quaternion.Euler(0, 180f, 0);
                         break;
 
                     case 3:
-                        var node3 = _grid[_levelConfig.GridSize.x - 1, _levelConfig.GridSize.y - 1];
+                        var node3 = _grid[LevelManager.CurrentConfig.GridSize.x - 1, LevelManager.CurrentConfig.GridSize.y - 1];
                         pos = node3.WorldPosition + (Vector3.right * 1 + Vector3.forward * 1);
                         rot = Quaternion.Euler(0, 90f, 0);
                         break;
@@ -119,8 +122,8 @@ namespace NinovaGamesCase.Core
             }
             
             var groundBGClone = Instantiate(_groundBGPrefab, transform);
-            var groundScaleX = .7f + (.1f * (_levelConfig.GridSize.x - 3));
-            var groundScaleY = .7f + (.1f * (_levelConfig.GridSize.y - 3));
+            var groundScaleX = .7f + (.1f * (LevelManager.CurrentConfig.GridSize.x - 3));
+            var groundScaleY = .7f + (.1f * (LevelManager.CurrentConfig.GridSize.y - 3));
             groundBGClone.transform.localScale = new Vector3(groundScaleX, groundScaleY);
             groundBGClone.SetActive(true);
             
@@ -164,7 +167,7 @@ namespace NinovaGamesCase.Core
                 var groupedNodes = new List<List<Node>>();
                 var currentGroup = new List<Node>();
 
-                var limit = (edge == Edge.Down || edge == Edge.Up) ? _levelConfig.GridSize.x : _levelConfig.GridSize.y;
+                var limit = (edge == Edge.Down || edge == Edge.Up) ? LevelManager.CurrentConfig.GridSize.x : LevelManager.CurrentConfig.GridSize.y;
 
                 for (var s = 0; s < limit;)
                 {
@@ -175,8 +178,8 @@ namespace NinovaGamesCase.Core
                         var node = edge switch
                         {
                             Edge.Down => _grid[j, 0],
-                            Edge.Right => _grid[_levelConfig.GridSize.x - 1, j],
-                            Edge.Up => _grid[j, _levelConfig.GridSize.y - 1],
+                            Edge.Right => _grid[LevelManager.CurrentConfig.GridSize.x - 1, j],
+                            Edge.Up => _grid[j, LevelManager.CurrentConfig.GridSize.y - 1],
                             Edge.Left => _grid[0, j],
                             _ => null
                         };
@@ -210,7 +213,7 @@ namespace NinovaGamesCase.Core
 
         public Node GetSnappedNode(Vector3 pos)
         {
-            var m_GridSize = new Vector3(_levelConfig.NodeSize.x, 0, _levelConfig.NodeSize.y);
+            var m_GridSize = new Vector3(LevelManager.CurrentConfig.NodeSize.x, 0, LevelManager.CurrentConfig.NodeSize.y);
             var p = new Vector3(
                 Mathf.RoundToInt(pos.x / m_GridSize.x) * m_GridSize.x,
                 Mathf.RoundToInt(pos.y / m_GridSize.y) * m_GridSize.y,
@@ -228,6 +231,6 @@ namespace NinovaGamesCase.Core
         }
 
         public bool IsNodeInBounds(Vector2Int pos) =>
-            pos.x >= 0 && pos.x < _levelConfig.GridSize.x && pos.y >= 0 && pos.y < _levelConfig.GridSize.y;
+            pos.x >= 0 && pos.x < LevelManager.CurrentConfig.GridSize.x && pos.y >= 0 && pos.y < LevelManager.CurrentConfig.GridSize.y;
     }
 }

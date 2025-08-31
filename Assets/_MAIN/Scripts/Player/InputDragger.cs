@@ -1,3 +1,4 @@
+using NinovaGamesCase.Managers;
 using UnityEngine;
 
 namespace NinovaGamesCase.Core
@@ -12,29 +13,32 @@ namespace NinovaGamesCase.Core
 
         private void Update()
         {
-            if (Input.touchCount <= 0)
+            if (GameManager.GameState == GameState.Idle)
                 return;
             
-            var touch = Input.GetTouch(0);
-            switch (touch.phase)
-            {
-                case TouchPhase.Began: HandleStartDrag(touch.position); break;
-                
-                case TouchPhase.Moved: 
-                case TouchPhase.Stationary: HandleDragging(touch.position); break;
-                
-                case TouchPhase.Canceled:
-                case TouchPhase.Ended: HandleDrop(touch.position); break;
-            }
+            // if (Input.touchCount <= 0)
+            //     return;
+            //
+            // var touch = Input.GetTouch(0);
+            // switch (touch.phase)
+            // {
+            //     case TouchPhase.Began: HandleStartDrag(touch.position); break;
+            //     
+            //     case TouchPhase.Moved: 
+            //     case TouchPhase.Stationary: HandleDragging(touch.position); break;
+            //     
+            //     case TouchPhase.Canceled:
+            //     case TouchPhase.Ended: HandleDrop(touch.position); break;
+            // }
             
-            // if (Input.GetMouseButtonDown(0))
-            //     HandleStartDrag(Input.mousePosition);
-            //
-            // if (Input.GetMouseButton(0))
-            //     HandleDragging(Input.mousePosition);
-            //
-            // if (Input.GetMouseButtonUp(0))
-            //     HandleDrop(Input.mousePosition);
+            if (Input.GetMouseButtonDown(0))
+                HandleStartDrag(Input.mousePosition);
+            
+            if (Input.GetMouseButton(0))
+                HandleDragging(Input.mousePosition);
+            
+            if (Input.GetMouseButtonUp(0))
+                HandleDrop(Input.mousePosition);
         }
 
         private void HandleStartDrag(Vector2 pos)

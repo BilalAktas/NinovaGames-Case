@@ -1,3 +1,4 @@
+using System;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
@@ -8,41 +9,50 @@ namespace NinovaGamesCase.Managers
     
     public class GameManager : MonoBehaviour
     {
-        [SerializeField] private TextMeshProUGUI _timerText;
-        [SerializeField] private float _totalTime;
-        [SerializeField] private GameObject _levelCompletedUI;
+        public static event Action OnTimeFailed;
         
-        private GameState _gameState;
+        [SerializeField] private TextMeshProUGUI _timerText;
+        [SerializeField] private GameObject _levelCompletedUI;
+        [SerializeField] private GameObject _levelFailedUI;
+        
+        public static GameState GameState;
         
         private float currentTime;
 
-        private void Start()
+        private void Awake()
         {
-            _gameState = GameState.Play;
-            
-            currentTime = _totalTime;
-
             MatchManager.OnLevelCompleted += OnLevelCompleted;
+            LevelManager.OnLevelLoaded += OnLevelLoaded;
         }
 
         private void OnDestroy()
         {
             MatchManager.OnLevelCompleted -= OnLevelCompleted;
+            LevelManager.OnLevelLoaded -= OnLevelLoaded;
         }
 
         private void OnLevelCompleted()
         {
-            _gameState = GameState.Idle;
+            GameState = GameState.Idle;
             DOVirtual.DelayedCall(1f, () =>
             {
                 _levelCompletedUI.SetActive(true);
             });
             
         }
+        
+        private void OnLevelLoaded()
+        {
+            _levelCompletedUI.SetActive(false);
+            _levelFailedUI.SetActive(false);
+            GameState = GameState.Play;
+            currentTime = LevelManager.CurrentConfig.Time;
+            
+        }
 
         private void Update()
         {
-            if (_gameState == GameState.Idle)
+            if (GameState == GameState.Idle)
                 return;
             
             currentTime -= Time.deltaTime;
@@ -51,7 +61,9 @@ namespace NinovaGamesCase.Managers
 
             if (currentTime<=0)
             {
-                //fail.
+                GameState = GameState.Idle;
+                _levelFailedUI.SetActive(true);
+                OnTimeFailed?.Invoke();
             }
         }
 

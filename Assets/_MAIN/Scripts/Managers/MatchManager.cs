@@ -2,30 +2,37 @@ using System;
 using NinovaGamesCase.Core;
 using NinovaGamesCase.Helpers;
 using UnityEngine;
-using Grid = NinovaGamesCase.Core.Grid;
 
 namespace NinovaGamesCase.Managers
 {
     public class MatchManager : MonoBehaviour
     {
+        public static event Action OnMatchedCompleted;
         public static event Action OnLevelCompleted;
-        public int MatchedAmount { get; private set; }
+        private int _matchedAmount;
         
         private void Start()
         {
             Block.OnMatched += OnMatched;
+            LevelManager.OnLevelLoaded += OnLevelLoaded;
         }
 
         private void OnDestroy()
         {
             Block.OnMatched -= OnMatched;
+            LevelManager.OnLevelLoaded -= OnLevelLoaded;
+        }
+        
+        private void OnLevelLoaded()
+        {
+            _matchedAmount = 0;
         }
 
         private void OnMatched(Door door, Block block)
         {
-            MatchedAmount++;
+            _matchedAmount++;
             block.OnMatchedMove(door.WorldPosition + Helpers.Helpers.LevelDoorDirectionToVector(door.LevelDoorData.Direction) * 5f);
-
+            OnMatchedCompleted?.Invoke();
             var doorParticle = ObjectPool.Instance.GetFromPool("DoorParticle");
             doorParticle.transform.position = door.transform.position;
             switch (door.LevelDoorData.Direction)
@@ -51,8 +58,9 @@ namespace NinovaGamesCase.Managers
             doorParticle.SetActive(true);
             
             door.OnMatchedAnim();
-            if (MatchedAmount>=Grid.Instance.LevelConfig.LevelBlockData.Length)
+            if (_matchedAmount>=LevelManager.CurrentConfig.LevelBlockData.Length)
             {
+                _matchedAmount = 0;
                 OnLevelCompleted?.Invoke();
                 Debug.Log("LevelCompleted");
             }

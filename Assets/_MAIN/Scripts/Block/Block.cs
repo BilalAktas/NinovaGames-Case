@@ -23,16 +23,19 @@ namespace NinovaGamesCase.Core
     
     public class Block : MonoBehaviour
     {
+        public static event Action OnMoved;
+        public static event Action OnMoveFailed;
         public static event Action<Door, Block> OnMatched;
+        
         private BlockData BlockData;
         private List<Node> Nodes = new();
         private List<Node> _tempNodes = new();
         private List<BlockMesh> _blockMeshes = new();
 
         [SerializeField] private GameObject _blockMeshPrefab;
-        
-
         private HighlightEffect _highlightEffect;
+
+        private bool _active = true;
 
         private void Awake()
         {
@@ -64,63 +67,14 @@ namespace NinovaGamesCase.Core
                 mesh.SetColor(BlockData.ColorData.ColorMaterial);
         }
         
-        private bool IsDiagonal(Vector3 dir)
-        {
-            dir.y = 0; // sadece yatay düzlemde kontrol
-            dir.Normalize();
-
-            // Sağ, sol, ileri, geri yönleri
-            Vector3[] cardinalDirs = {
-                Vector3.forward,
-                Vector3.back,
-                Vector3.left,
-                Vector3.right
-            };
-
-            foreach (var cardinal in cardinalDirs)
-            {
-                float angle = Vector3.Angle(dir, cardinal);
-                if (angle < 10f) // yaklaşık düz yön
-                    return false;
-            }
-
-            return true; // düz değilse çaprazdır
-        }
         
-        private Vector3 IsCollisionDetectedAtPoint(Vector3 point)
-        {
-            var newPos = transform.position + point * 1f;
-            // foreach (Transform child in transform)
-            // {
-            //     Vector3 start = child.position;
-            //     Vector3 direction = (point + child.localPosition) - start;
-            //     
-            //
-            //     direction.Normalize();
-            //     float distance = IsDiagonal(direction) ? 1f : .75f; 
-            //
-            //     // Çizgi çiz debug için
-            //     Debug.DrawRay(start, direction.normalized * distance, Color.red, 1f);
-            //
-            //     if (Physics.Raycast(start, direction, out RaycastHit hit, distance))
-            //     {
-            //         if (hit.transform.IsChildOf(transform))
-            //             continue;
-            //     
-            //         Debug.Log($"Collision detected! {child.name} hit {hit.transform.name}");
-            //
-            //         float allowedFactor = hit.distance / distance;
-            //
-            //         newPos = transform.position + point * allowedFactor;
-            //     }
-            //     
-            // }
-            
-            return newPos;
-        }
+      
         
         public void StartDrag()
         {
+            if (!_active)
+                return;
+            
             OutlineShader(true);
             
             ResetNodes(true);
@@ -147,17 +101,26 @@ namespace NinovaGamesCase.Core
         
         public void Dragging(Vector3 pos, Vector3 meshPos)
         {
-            var p = GetPosition(pos, meshPos);
-            var nextPos = (p - transform.position);
-            var check = IsCollisionDetectedAtPoint(nextPos);
-            check.y = .1f;
-            transform.position = check;
+            if (!_active)
+                return;
+            
+            var p = GetPosition(pos, meshPos) - transform.position;
+            transform.position += p;   
+
+
+            var pp = transform.position;
+            pp.y = .1f;
+            transform.position = pp;
         }
+        
 
         #region DROP
 
         public void Drop(Node node)
         {
+            if (!_active)
+                return;
+            
             if (node == null || !TryGetValidNodes(node, out var validNodes))
             {
                 ResetToTempNodes();
@@ -169,6 +132,7 @@ namespace NinovaGamesCase.Core
                     n.SetBlock(this);
 
                 transform.position = Nodes.First().WorldPosition;
+                OnMoved?.Invoke();
 
                 CheckDoorMatch();
             }
@@ -183,6 +147,8 @@ namespace NinovaGamesCase.Core
                 node.SetBlock(this);
 
             transform.position = Nodes.First().WorldPosition;
+            
+            OnMoveFailed?.Invoke();
         }
         
         private bool TryGetValidNodes(Node pivotNode, out List<Node> result)
@@ -268,6 +234,7 @@ namespace NinovaGamesCase.Core
                 }
                 
                 Debug.Log("Matched");
+                _active = false;
                 ResetNodes(false);
                 OnMatched?.Invoke(matchedDoor, this);
             }
