@@ -31,33 +31,38 @@ namespace NinovaGamesCase.Managers
         private void OnMatched(Door door, Block block)
         {
             _matchedAmount++;
-            block.OnMatchedMove(door.WorldPosition + Helpers.Helpers.LevelDoorDirectionToVector(door.LevelDoorData.Direction) * 5f);
-            OnMatchedCompleted?.Invoke();
-            var doorParticle = ObjectPool.Instance.GetFromPool("DoorParticle");
-            doorParticle.transform.position = door.transform.position;
-            switch (door.LevelDoorData.Direction)
+            if (door != null && block!=null)
             {
-                case LevelDoorDirection.Up:
-                    doorParticle.transform.rotation = Quaternion.identity;
-                    break;
-                case LevelDoorDirection.Down:
-                    doorParticle.transform.rotation = Quaternion.Euler(0,180,0);
-                    break;
-                case LevelDoorDirection.Left:
-                    doorParticle.transform.rotation = Quaternion.Euler(0,270,0);
-                    break;
-                case LevelDoorDirection.Right:
-                    doorParticle.transform.rotation = Quaternion.Euler(0,90,0);
-                    break;
-            }
+                block.OnMatchedMove(door.WorldPosition + Helpers.Helpers.LevelDoorDirectionToVector(door.LevelDoorData.Direction) * 5f);
+                OnMatchedCompleted?.Invoke();
+                var doorParticle = ObjectPool.Instance.GetFromPool("DoorParticle");
+                doorParticle.transform.position = door.transform.position;
+                switch (door.LevelDoorData.Direction)
+                {
+                    case LevelDoorDirection.Up:
+                        doorParticle.transform.rotation = Quaternion.identity;
+                        break;
+                    case LevelDoorDirection.Down:
+                        doorParticle.transform.rotation = Quaternion.Euler(0,180,0);
+                        break;
+                    case LevelDoorDirection.Left:
+                        doorParticle.transform.rotation = Quaternion.Euler(0,270,0);
+                        break;
+                    case LevelDoorDirection.Right:
+                        doorParticle.transform.rotation = Quaternion.Euler(0,90,0);
+                        break;
+                }
 
-            var p = doorParticle.GetComponent<ParticleSystemRenderer>();
-            p.material.SetColor("_BaseColor", door.LevelDoorData.ColorData.ColorMaterial.GetColor("_Color"));
+                var p = doorParticle.GetComponent<ParticleSystemRenderer>();
+                p.material.SetColor("_BaseColor", door.LevelDoorData.ColorData.ColorMaterial.GetColor("_Color"));
             
             
-            doorParticle.SetActive(true);
+                doorParticle.SetActive(true);
             
-            door.OnMatchedAnim();
+                door.OnMatchedAnim();
+             
+            }
+            
             if (_matchedAmount>=LevelManager.CurrentConfig.LevelBlockData.Length)
             {
                 _matchedAmount = 0;

@@ -26,6 +26,7 @@ namespace NinovaGamesCase.Core
         [SerializeField] private GameObject _cornerPrefab;
         [SerializeField] private GameObject _groundBGPrefab;
 
+        private List<Block> _allSpawnedBlocks = new();
         private List<Door> _spawnedDoors = new();
 
 
@@ -35,6 +36,8 @@ namespace NinovaGamesCase.Core
             {
                 Destroy(child.gameObject);
             }
+            _allSpawnedBlocks.Clear();
+            _spawnedDoors.Clear();
         }
         
         public void CreateGrid()
@@ -79,7 +82,9 @@ namespace NinovaGamesCase.Core
             foreach (var data in LevelManager.CurrentConfig.LevelBlockData)
             {
                 var blockClone = Instantiate(_blockPrefab, transform);
-                blockClone.GetComponent<Block>().Initialize(data);
+                var block = blockClone.GetComponent<Block>();
+                block.Initialize(data);
+                _allSpawnedBlocks.Add(block);
                 blockClone.SetActive(true);
             }
 
@@ -232,5 +237,8 @@ namespace NinovaGamesCase.Core
 
         public bool IsNodeInBounds(Vector2Int pos) =>
             pos.x >= 0 && pos.x < LevelManager.CurrentConfig.GridSize.x && pos.y >= 0 && pos.y < LevelManager.CurrentConfig.GridSize.y;
+
+        public List<Block> GetAllBlockByColor(string color) =>
+            _allSpawnedBlocks.FindAll(s => s.BlockData.ColorData.Color == color);
     }
 }

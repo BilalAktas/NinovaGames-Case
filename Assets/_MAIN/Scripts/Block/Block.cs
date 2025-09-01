@@ -3,36 +3,37 @@ using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
 using HighlightPlus;
-using NinovaGamesCase.Helpers;
+using NinovaGamesCase.Managers;
 using UnityEngine;
 
 namespace NinovaGamesCase.Core
 {
-    [System.Serializable]
+    [Serializable]
     public struct ColorData
     {
         public string Color;
         public Material ColorMaterial;
     }
-    
-    [System.Serializable]
+
+    [Serializable]
     public struct BlockData
     {
         public ColorData ColorData;
     }
-    
+
     public class Block : MonoBehaviour
     {
+        public static event Action<Vector2, bool> OnForcedDrop;
         public static event Action OnMoved;
         public static event Action OnMoveFailed;
         public static event Action<Door, Block> OnMatched;
-        
-        private BlockData BlockData;
-        private List<Node> Nodes = new();
-        private List<Node> _tempNodes = new();
-        private List<BlockMesh> _blockMeshes = new();
 
         [SerializeField] private GameObject _blockMeshPrefab;
+
+        public BlockData BlockData { get; private set; }
+        private List<Node> _nodes = new();
+        private List<Node> _tempNodes = new();
+        private List<BlockMesh> _blockMeshes = new();
         private HighlightEffect _highlightEffect;
 
         private bool _active = true;
@@ -45,133 +46,146 @@ namespace NinovaGamesCase.Core
         public void Initialize(LevelBlockData data)
         {
             BlockData = data.BlockData;
-            
-            var node = Grid.Instance.GetGrid()[data.GridPosition.x, data.GridPosition.y];
-            transform.position = node.WorldPosition;
-            Nodes.Add(node);
-            foreach (var pos in data.MeshPositions)
+
+            var basePos = data.GridPosition;
+            var grid = Grid.Instance.GetGrid();
+
+            var baseNode = grid[basePos.x, basePos.y];
+            transform.position = baseNode.WorldPosition;
+            _nodes.Add(baseNode);
+
+            foreach (var offset in data.MeshPositions)
             {
-                node = Grid.Instance.GetGrid()[data.GridPosition.x + pos.x, data.GridPosition.y + pos.y];
-                var meshClone = Instantiate(_blockMeshPrefab, transform);
-                meshClone.transform.position = node.WorldPosition;
-                meshClone.SetActive(true);
-                Nodes.Add(node);
+                var node = grid[basePos.x + offset.x, basePos.y + offset.y];
+                var mesh = Instantiate(_blockMeshPrefab, transform);
+                mesh.transform.position = node.WorldPosition;
+                mesh.SetActive(true);
+                _nodes.Add(node);
             }
 
             _blockMeshes = GetComponentsInChildren<BlockMesh>().ToList();
 
-            foreach (var _node in Nodes)
-                _node.SetBlock(this);
+            foreach (var node in _nodes)
+                node.SetBlock(this);
 
             foreach (var mesh in _blockMeshes)
                 mesh.SetColor(BlockData.ColorData.ColorMaterial);
         }
-        
-        
-      
-        
-        public void StartDrag()
+
+        public void OnVacuumPowerUp(Vector3 targetPos)
         {
-            if (!_active)
-                return;
+            _active = false;
+            
+            foreach (var node in _nodes)
+                node.SetBlock(null);
+            
+            _nodes.Clear();
             
             OutlineShader(true);
             
-            ResetNodes(true);
-            
-            Nodes.Clear();
-        }
-
-        private void ResetNodes(bool save)
-        {
-            if(save) _tempNodes = Nodes.ToList();
-            else _tempNodes.Clear();
-            
-            foreach (var node in Nodes)
-                node.SetBlock(null);
-            
-            Nodes.Clear();
-        }
-
-        public Vector3 GetPosition(Vector3 mPos, Vector3 meshPos)
-        {
-            var p = meshPos - transform.position;
-            return mPos - p;
+            transform.DOScale(Vector3.zero, .5f).SetEase(Ease.Linear);
+            transform.DOMove(targetPos, .5f).SetEase(Ease.Linear).OnComplete(() =>
+            {
+                OnMatched?.Invoke(null,null);
+            });
         }
         
-        public void Dragging(Vector3 pos, Vector3 meshPos)
+        public void StartDrag()
         {
-            if (!_active)
-                return;
-            
-            var p = GetPosition(pos, meshPos) - transform.position;
-            transform.position += p;   
+            if (!_active) return;
 
-
-            var pp = transform.position;
-            pp.y = .1f;
-            transform.position = pp;
+            OutlineShader(true);
+            ResetNodes(save: true);
         }
-        
 
-        #region DROP
-
-        public void Drop(Node node)
+        public void Dragging(Vector3 inputPos, Vector3 meshPos)
         {
-            if (!_active)
-                return;
-            
+            if (!_active) return;
+
+            var offset = meshPos - transform.position;
+            var targetPos = inputPos - offset;
+            targetPos.y = -0.5f;
+
+            var moveDir = targetPos - transform.position;
+            var nextPos = transform.position + moveDir * (Time.deltaTime * 10f);
+
+            if (CanMoveTo(nextPos))
+                transform.position = nextPos;
+
+            CheckDoorMatch(snapped: false);
+        }
+
+        private bool CanMoveTo(Vector3 pos)
+        {
+            return _blockMeshes.All(mesh => !mesh.CheckObstacle(pos));
+        }
+
+        public void Drop(Node node, bool forced)
+        {
+            if (!_active) return;
+
             if (node == null || !TryGetValidNodes(node, out var validNodes))
             {
                 ResetToTempNodes();
             }
             else
             {
-                Nodes = validNodes;
-                foreach (var n in Nodes)
+                _nodes = validNodes;
+                foreach (var n in _nodes)
                     n.SetBlock(this);
 
-                transform.position = Nodes.First().WorldPosition;
+                transform.position = _nodes.First().WorldPosition;
                 OnMoved?.Invoke();
 
-                CheckDoorMatch();
+                if (forced)
+                    _active = false;
+
+                CheckDoorMatch(snapped: true);
             }
 
             OutlineShader(false);
         }
-        
+
+        private void ResetNodes(bool save)
+        {
+            if (save) _tempNodes = _nodes.ToList();
+            else _tempNodes.Clear();
+
+            foreach (var node in _nodes)
+                node.SetBlock(null);
+
+            _nodes.Clear();
+        }
+
         private void ResetToTempNodes()
         {
-            Nodes = _tempNodes;
-            foreach (var node in Nodes)
+            _nodes = _tempNodes;
+            foreach (var node in _nodes)
                 node.SetBlock(this);
 
-            transform.position = Nodes.First().WorldPosition;
-            
+            transform.position = _nodes.First().WorldPosition;
             OnMoveFailed?.Invoke();
         }
-        
+
         private bool TryGetValidNodes(Node pivotNode, out List<Node> result)
         {
-            result = new List<Node>();
-            var gridPositions = new List<Vector2Int>
-            {
-                pivotNode.GridPosition
-            };
+            result = new();
+            var grid = Grid.Instance.GetGrid();
+            var pivotPos = pivotNode.GridPosition;
 
-            for (var i = 1; i < _blockMeshes.Count; i++)
+            var positions = new List<Vector2Int> { pivotPos };
+            positions.AddRange(_blockMeshes.Skip(1).Select(mesh =>
             {
-                var offset = _blockMeshes[i].transform.localPosition;
-                var gridPos = pivotNode.GridPosition + new Vector2Int((int)offset.x, (int)offset.z);
-                gridPositions.Add(gridPos);
-            }
+                var local = mesh.transform.localPosition;
+                return pivotPos + new Vector2Int((int)local.x, (int)local.z);
+            }));
 
-            foreach (var pos in gridPositions)
+            foreach (var pos in positions)
             {
                 if (!Grid.Instance.IsNodeInBounds(pos))
                     return false;
 
-                var node = Grid.Instance.GetGrid()[pos.x, pos.y];
+                var node = grid[pos.x, pos.y];
                 if (node == null || node.Block)
                     return false;
 
@@ -181,107 +195,77 @@ namespace NinovaGamesCase.Core
             return true;
         }
 
-        #endregion
-        
-        #region CHECK_DOOR_MATCH
-
-        private void CheckDoorMatch()
+        private void CheckDoorMatch(bool snapped)
         {
             var matchedDoor = FindMatchingDoor();
+            if (matchedDoor == null) return;
 
-            if (matchedDoor == null)
-                return;
-            
-            var uniqueLines = GetUniqueLineCount(matchedDoor.LevelDoorData.Direction);
-            if (uniqueLines.Count <= matchedDoor.LevelDoorData.Length)
+            var lines = GetUniqueLines(matchedDoor.LevelDoorData.Direction, snapped);
+            if (lines.Count > matchedDoor.LevelDoorData.Length) return;
+
+            var allLinesMatch = lines.All(line =>
+                matchedDoor.CurrentNodes.Any(node =>
+                    (matchedDoor.LevelDoorData.Direction is LevelDoorDirection.Up or LevelDoorDirection.Down)
+                        ? Mathf.RoundToInt(node.WorldPosition.x) == line
+                        : Mathf.RoundToInt(node.WorldPosition.z) == line));
+
+            if (!allLinesMatch) return;
+
+            if (_active && !snapped)
+                OnForcedDrop?.Invoke(Input.mousePosition, true);
+            else
             {
-                if (matchedDoor.LevelDoorData.Direction == LevelDoorDirection.Up ||
-                    matchedDoor.LevelDoorData.Direction == LevelDoorDirection.Down)
-                {
-                    foreach (var line in uniqueLines)
-                    {
-                        var s = false;
-                        foreach (var node in matchedDoor.CurrentNodes)
-                        {
-                            if ((int)node.WorldPosition.x == line)
-                            {
-                                s = true;
-                                break;
-                            }
-                        }
-
-                        if (!s)
-                            return;
-                    }
-                }
-                else
-                {
-                    foreach (var line in uniqueLines)
-                    {
-                        var s = false;
-                        foreach (var node in matchedDoor.CurrentNodes)
-                        {
-                            if ((int)node.WorldPosition.z == line)
-                            {
-                                s = true;
-                                break;
-                            }
-                        }
-
-                        if (!s)
-                            return;
-                    }
-                }
-                
-                Debug.Log("Matched");
-                _active = false;
                 ResetNodes(false);
                 OnMatched?.Invoke(matchedDoor, this);
             }
         }
-        
+
         private Door FindMatchingDoor()
         {
-            foreach (var mesh in _blockMeshes)
-            {
-                var door = mesh.CheckDoor();
-                if (door && door.LevelDoorData.ColorData.Color == BlockData.ColorData.Color)
-                {
-                    Debug.Log(BlockData.ColorData.Color);
-                    return door;
-                }
-            }
-
-            return null;
+            return _blockMeshes
+                .Select(mesh => mesh.CheckDoor())
+                .FirstOrDefault(door =>
+                    door != null && door.LevelDoorData.ColorData.Color == BlockData.ColorData.Color);
         }
-        
-        
-        private HashSet<int> GetUniqueLineCount(LevelDoorDirection direction)
+
+        private HashSet<int> GetUniqueLines(LevelDoorDirection direction, bool snapped)
         {
-            HashSet<int> uniqueLinesAmount = new();
+            var lines = new HashSet<int>();
 
-
-            foreach (Transform child in transform)
+            if (!snapped)
             {
-                var key = (direction == LevelDoorDirection.Up || direction == LevelDoorDirection.Down)
-                    ? Mathf.RoundToInt(child.position.x)
-                    : Mathf.RoundToInt(child.position.z);
+                var pivot = Grid.Instance.GetSnappedNode(transform.position);
+                lines.Add(GetLineKey(pivot.WorldPosition, direction));
 
-                uniqueLinesAmount.Add(key);
+                foreach (Transform child in transform)
+                    lines.Add(GetLineKey(pivot.WorldPosition + child.localPosition, direction));
+            }
+            else
+            {
+                foreach (Transform child in transform)
+                    lines.Add(GetLineKey(child.position, direction));
             }
 
-            return uniqueLinesAmount;
+            return lines;
         }
 
-        #endregion
-     
-        
-        private void OutlineShader(bool state) => _highlightEffect.highlighted = state;
+        private int GetLineKey(Vector3 pos, LevelDoorDirection dir)
+        {
+            return (dir is LevelDoorDirection.Up or LevelDoorDirection.Down)
+                ? Mathf.RoundToInt(pos.x)
+                : Mathf.RoundToInt(pos.z);
+        }
+
+        private void OutlineShader(bool state)
+        {
+            if (_highlightEffect != null)
+                _highlightEffect.highlighted = state;
+        }
 
         public void OnMatchedMove(Vector3 pos)
         {
             pos.y = transform.position.y;
             transform.DOMove(pos, 2f).SetEase(Ease.Linear);
         }
-    }   
+    }
 }

@@ -43,6 +43,9 @@ namespace NinovaGamesCase.Managers
 
         private void NextLevel()
         {
+            if (PowerUpActionManager.Instance.PowerUp != PowerUp.None)
+                return;
+            
             Grid.Instance.ClearGrid();
             LoadLevel();
         }

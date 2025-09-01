@@ -15,41 +15,63 @@ MonoBehaviour:
   _gridSize: {x: 5, y: 5}
   _nodeSize: {x: 1, y: 1}
   _levelBlockData:
-  - GridPosition: {x: 0, y: 2}
+  - GridPosition: {x: 2, y: 2}
     MeshPositions:
     - {x: 0, y: 0}
+    - {x: 1, y: 0}
     - {x: 0, y: 1}
-    - {x: 1, y: 1}
     BlockData:
       ColorData:
         Color: Blue
         ColorMaterial: {fileID: 2100000, guid: 0f5ec90eb8e9a07489926830fbfa122d, type: 2}
-  - GridPosition: {x: 3, y: 1}
+  - GridPosition: {x: 2, y: 4}
     MeshPositions:
     - {x: 0, y: 0}
-    - {x: 0, y: 1}
-    - {x: 0, y: 2}
+    BlockData:
+      ColorData:
+        Color: Red
+        ColorMaterial: {fileID: 2100000, guid: 1866f86c31f04464589aa307469af5ee, type: 2}
+  - GridPosition: {x: 3, y: 4}
+    MeshPositions:
+    - {x: 0, y: 0}
+    - {x: 1, y: 0}
     BlockData:
       ColorData:
         Color: Yellow
         ColorMaterial: {fileID: 2100000, guid: 238bf8b65b6738346b09dbb01e91cc2a, type: 2}
+  - GridPosition: {x: 1, y: 0}
+    MeshPositions:
+    - {x: 0, y: 0}
+    - {x: 0, y: 1}
+    - {x: 1, y: 1}
+    - {x: 2, y: 1}
+    BlockData:
+      ColorData:
+        Color: Green
+        ColorMaterial: {fileID: 2100000, guid: 0082f1df4775a5140b2926f046921477, type: 2}
   _levelDoorData:
-  - GridPosition: {x: 1, y: 4}
-    Length: 2
+  - GridPosition: {x: 3, y: 0}
+    Length: 1
     ColorData:
       Color: Red
       ColorMaterial: {fileID: 2100000, guid: 1866f86c31f04464589aa307469af5ee, type: 2}
-    Direction: 0
-  - GridPosition: {x: 0, y: 1}
-    Length: 3
+    Direction: 1
+  - GridPosition: {x: 0, y: 2}
+    Length: 1
     ColorData:
       Color: Yellow
       ColorMaterial: {fileID: 2100000, guid: 238bf8b65b6738346b09dbb01e91cc2a, type: 2}
     Direction: 3
-  - GridPosition: {x: 2, y: 0}
+  - GridPosition: {x: 1, y: 0}
     Length: 2
     ColorData:
       Color: Blue
       ColorMaterial: {fileID: 2100000, guid: 0f5ec90eb8e9a07489926830fbfa122d, type: 2}
     Direction: 1
-  _time: 180
+  - GridPosition: {x: 1, y: 4}
+    Length: 3
+    ColorData:
+      Color: Green
+      ColorMaterial: {fileID: 2100000, guid: 0082f1df4775a5140b2926f046921477, type: 2}
+    Direction: 0
+  _time: 60

@@ -1,3 +1,4 @@
+using System;
 using NinovaGamesCase.Managers;
 using UnityEngine;
 
@@ -9,13 +10,50 @@ namespace NinovaGamesCase.Core
         private IDragable selectedDragableObject;
         [SerializeField] private float _draggerPosZ;
 
-        private void Start() => _camera = Camera.main;
+        public static event Action<Block> OnPowerUpUsed;
+
+        private void Start()
+        {
+            _camera = Camera.main;
+
+            Block.OnForcedDrop += HandleDrop;
+        }
+
+        private void OnDestroy()
+        {
+            Block.OnForcedDrop -= HandleDrop;
+        }
 
         private void Update()
         {
-            if (GameManager.GameState == GameState.Idle)
+            if (GameManager.Instance.GameState == GameState.Idle)
+                return;
+
+            if (PowerUpActionManager.Instance.PowerUp == PowerUp.None)
+            {
+                HandleInput();
+            }
+            else
+            {
+                if(Input.GetMouseButtonDown(0)) HandlePowerUpSelection(Input.mousePosition);
+            }
+       
+        }
+
+        private void HandlePowerUpSelection(Vector2 pos)
+        {
+            if (!PowerUpActionManager.Instance.CanUse)
                 return;
             
+            var selectedObject = GetObject(pos);
+            if (selectedObject && selectedObject.TryGetComponent(out IDragable dragable))
+            {
+                OnPowerUpUsed?.Invoke(dragable.GetBlock());
+            }
+        }
+
+        private void HandleInput()
+        {
             // if (Input.touchCount <= 0)
             //     return;
             //
@@ -38,7 +76,7 @@ namespace NinovaGamesCase.Core
                 HandleDragging(Input.mousePosition);
             
             if (Input.GetMouseButtonUp(0))
-                HandleDrop(Input.mousePosition);
+                HandleDrop(Input.mousePosition, false);
         }
 
         private void HandleStartDrag(Vector2 pos)
@@ -47,7 +85,7 @@ namespace NinovaGamesCase.Core
             if (selectedObject && selectedObject.TryGetComponent(out IDragable dragable))
             {
                 selectedDragableObject = dragable;
-                dragable.StartDrag();
+                dragable.StartDrag();   
             }
         }
 
@@ -59,14 +97,14 @@ namespace NinovaGamesCase.Core
             selectedDragableObject.Dragging(GetWorldPosition(pos));
         }
 
-        private void HandleDrop(Vector2 pos)
+        private void HandleDrop(Vector2 pos, bool forced)
         {
             if (selectedDragableObject == null)
                 return;
             
             var node = Grid.Instance.GetSnappedNode(selectedDragableObject.GetPosition(GetWorldPosition(pos)));
             
-            selectedDragableObject.Drop(node);
+            selectedDragableObject.Drop(node, forced);
             selectedDragableObject = null;
         }
 

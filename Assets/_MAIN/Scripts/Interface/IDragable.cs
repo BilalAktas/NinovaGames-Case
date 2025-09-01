@@ -6,7 +6,8 @@ namespace NinovaGamesCase.Core
     {
         public void StartDrag();
         public void Dragging(Vector3 pos);
-        public void Drop(Node node);
+        public void Drop(Node node, bool forced);
         public Vector3 GetPosition(Vector3 pos);
+        public Block GetBlock();
     }   
 }

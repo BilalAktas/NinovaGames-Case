@@ -1,5 +1,6 @@
 using System;
 using DG.Tweening;
+using NinovaGamesCase.Helpers;
 using TMPro;
 using UnityEngine;
 
@@ -7,15 +8,20 @@ namespace NinovaGamesCase.Managers
 {
     public enum GameState {Idle, Play}
     
-    public class GameManager : MonoBehaviour
+    public class GameManager : Singleton<GameManager>
     {
         public static event Action OnTimeFailed;
         
         [SerializeField] private TextMeshProUGUI _timerText;
         [SerializeField] private GameObject _levelCompletedUI;
         [SerializeField] private GameObject _levelFailedUI;
-        
-        public static GameState GameState;
+
+        private GameState _gameState;
+        public GameState GameState
+        {
+            get { return _gameState; }
+            set { _gameState = value; }
+        }
         
         private float currentTime;
 

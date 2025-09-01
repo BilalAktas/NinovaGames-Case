@@ -42,6 +42,23 @@ namespace NinovaGamesCase.Helpers
             
             return (pos,scale);
         }
+        
+        public static Vector3 GetBoundsEdgePoint(BoxCollider box, Vector3 direction)
+        {
+            direction.Normalize();
+
+            var extents = box.bounds.extents;
+            var absDir = new Vector3(Mathf.Abs(direction.x), Mathf.Abs(direction.y), Mathf.Abs(direction.z));
+            
+            var scale = 1f / Mathf.Max(
+                absDir.x / extents.x,
+                absDir.y / extents.y,
+                absDir.z / extents.z
+            );
+
+            var offset = direction * scale;
+            return box.bounds.center + offset;
+        }
     }    
 }
 
