@@ -35,7 +35,7 @@ namespace NinovaGamesCase.Core
 
         public Door CheckDoor()
         {
-            var colliders = Physics.OverlapSphere(transform.position, .5f, _doorLayer);
+            var colliders = Physics.OverlapSphere(transform.position, .55f, _doorLayer);
             foreach (var collider in colliders)
             {
                 if(collider.transform.IsChildOf(transform.parent))
