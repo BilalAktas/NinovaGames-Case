@@ -5,16 +5,23 @@ using UnityEngine;
 
 namespace NinovaGamesCase.Managers
 {
+    /// <summary>
+    /// Manages the matching logic between blocks and doors, triggering events on matches and level completion.
+    /// </summary>
     public class MatchManager : MonoBehaviour
     {
         public static Action OnMatchedCompleted;
         public static event Action OnLevelCompleted;
         private int _matchedAmount;
+
+        private MaterialPropertyBlock _mpb;
         
         private void Start()
         {
             Block.OnMatched += OnMatched;
             LevelManager.OnLevelLoaded += OnLevelLoaded;
+
+            _mpb = new MaterialPropertyBlock();
         }
 
         private void OnDestroy()
@@ -28,6 +35,11 @@ namespace NinovaGamesCase.Managers
             _matchedAmount = 0;
         }
 
+        /// <summary>
+        /// Called when a block matches a door; moves the block, plays particle effects, triggers animations and checks for level completion.
+        /// </summary>
+        /// <param name="door">The door involved in the match.</param>
+        /// <param name="block">The block involved in the match.</param>
         private void OnMatched(Door door, Block block)
         {
             _matchedAmount++;
@@ -37,24 +49,12 @@ namespace NinovaGamesCase.Managers
                 OnMatchedCompleted?.Invoke();
                 var doorParticle = ObjectPool.Instance.GetFromPool("DoorParticle");
                 doorParticle.transform.position = door.transform.position;
-                switch (door.LevelDoorData.Direction)
-                {
-                    case LevelDoorDirection.Up:
-                        doorParticle.transform.rotation = Quaternion.identity;
-                        break;
-                    case LevelDoorDirection.Down:
-                        doorParticle.transform.rotation = Quaternion.Euler(0,180,0);
-                        break;
-                    case LevelDoorDirection.Left:
-                        doorParticle.transform.rotation = Quaternion.Euler(0,270,0);
-                        break;
-                    case LevelDoorDirection.Right:
-                        doorParticle.transform.rotation = Quaternion.Euler(0,90,0);
-                        break;
-                }
+                doorParticle.transform.rotation = GetRotationForDirection(door.LevelDoorData.Direction);
 
                 var p = doorParticle.GetComponent<ParticleSystemRenderer>();
-                p.material.SetColor("_BaseColor", door.LevelDoorData.ColorData.ColorMaterial.GetColor("_Color"));
+                p.GetPropertyBlock(_mpb);
+                _mpb.SetColor("_BaseColor", door.LevelDoorData.ColorData.ColorMaterial.GetColor("_Color"));
+                p.SetPropertyBlock(_mpb);
             
             
                 doorParticle.SetActive(true);
@@ -69,6 +69,18 @@ namespace NinovaGamesCase.Managers
                 OnLevelCompleted?.Invoke();
                 Debug.Log("LevelCompleted");
             }
+        }
+        
+        private Quaternion GetRotationForDirection(LevelDoorDirection dir)
+        {
+            return dir switch
+            {
+                LevelDoorDirection.Up => Quaternion.identity,
+                LevelDoorDirection.Down => Quaternion.Euler(0, 180, 0),
+                LevelDoorDirection.Left => Quaternion.Euler(0, 270, 0),
+                LevelDoorDirection.Right => Quaternion.Euler(0, 90, 0),
+                _ => Quaternion.identity
+            };
         }
     }   
 }

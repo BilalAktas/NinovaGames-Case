@@ -9,6 +9,9 @@ using Random = UnityEngine.Random;
 
 namespace NinovaGamesCase.Managers
 {
+    /// <summary>
+    /// Manages level loading, progression, and UI updates related to levels.
+    /// </summary>
     public class LevelManager : MonoBehaviour
     {
         public static event Action OnLevelLoaded;
@@ -41,6 +44,9 @@ namespace NinovaGamesCase.Managers
             _retryButton.onClick.RemoveAllListeners();
         }
 
+        /// <summary>
+        /// Loads the next level unless a power-up is active. Clears the current grid before loading.
+        /// </summary>
         private void NextLevel()
         {
             if (PowerUpActionManager.Instance.PowerUp != PowerUp.None)
@@ -50,12 +56,18 @@ namespace NinovaGamesCase.Managers
             LoadLevel();
         }
 
+        /// <summary>
+        /// Called when a level is completed. Advances the saved level and awards coins.
+        /// </summary>
         private void OnLevelCompleted()
         {
             SaveLoadManager.IncreaseLevel();
             PlayerCurrencyManager.AddCoin(Random.Range(10,100));
         }
 
+        /// <summary>
+        /// Loads the current level configuration and initializes the grid and UI.
+        /// </summary>
         private void LoadLevel()
         {
             var currentLevel = SaveLoadManager.GetLevel();

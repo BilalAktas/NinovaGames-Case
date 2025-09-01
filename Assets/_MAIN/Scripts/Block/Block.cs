@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
 using HighlightPlus;
-using NinovaGamesCase.Managers;
 using UnityEngine;
 
 namespace NinovaGamesCase.Core
 {
+    /// <summary>
+    /// Defines the available block colors for matching.
+    /// </summary>
     public enum MatchColor
     {
         Blue,
@@ -16,6 +18,9 @@ namespace NinovaGamesCase.Core
         Yellow
     }
 
+    /// <summary>
+    /// Holds a match color and its associated material.
+    /// </summary>
     [Serializable]
     public struct ColorData
     {
@@ -23,12 +28,21 @@ namespace NinovaGamesCase.Core
         public Material ColorMaterial;
     }
 
+    /// <summary>
+    /// Represents the data used to initialize a block, 
+    /// including its color information.
+    /// </summary>
     [Serializable]
     public struct BlockData
     {
         public ColorData ColorData;
     }
 
+    /// <summary>
+    /// Represents a block on the grid that can be dragged, dropped,
+    /// matched with doors, and highlighted. 
+    /// Handles all interactions with nodes and doors.
+    /// </summary>
     public class Block : MonoBehaviour
     {
         public static event Action<Vector2, bool> OnForcedDrop;
@@ -51,6 +65,10 @@ namespace NinovaGamesCase.Core
             _highlightEffect = GetComponent<HighlightEffect>();
         }
 
+        /// <summary>
+        /// Initializes the block with level-specific data,
+        /// spawns block meshes, assigns nodes, and sets colors.
+        /// </summary>
         public void Initialize(LevelBlockData data)
         {
             BlockData = data.BlockData;
@@ -83,6 +101,10 @@ namespace NinovaGamesCase.Core
             _highlightEffect.outlineColor = Helpers.Helpers.DarkenColor(_color);
         }
 
+        /// <summary>
+        /// Handles block removal when the vacuum power-up is triggered.
+        /// Shrinks and moves the block toward the target position.
+        /// </summary>
         public void OnVacuumPowerUp(Vector3 targetPos)
         {
             _active = false;
@@ -98,6 +120,9 @@ namespace NinovaGamesCase.Core
             transform.DOMove(targetPos, .5f).SetEase(Ease.Linear).OnComplete(() => { OnMatched?.Invoke(null, null); });
         }
 
+        /// <summary>
+        /// Prepares the block for dragging by saving its nodes and enabling outline.
+        /// </summary>
         public void StartDrag()
         {
             if (!_active) return;
@@ -106,12 +131,15 @@ namespace NinovaGamesCase.Core
             ResetNodes(save: true);
         }
 
+        /// <summary>
+        /// Updates the block’s position while being dragged across the grid.
+        /// </summary>
         public void Dragging(Vector3 inputPos, Transform grabbedMesh)
         {
             if (!_active) return;
 
             // Try to get a node under the cursor
-            var grabbedNode = Grid.Instance.GetSnappedNode(inputPos) 
+            var grabbedNode = Grid.Instance.GetSnappedNode(inputPos)
                               ?? Grid.Instance.GetClosestAvailableNode(inputPos);
 
             if (grabbedNode == null)
@@ -145,7 +173,10 @@ namespace NinovaGamesCase.Core
             CheckDoorMatch(snapped: false);
         }
 
-      
+
+        /// <summary>
+        /// Finds the closest valid position near a grabbed node for placement.
+        /// </summary>
         private Vector3? FindClosestValidPosition(Node grabbedNode, Transform grabbedMesh, Vector3 desiredPos)
         {
             // Try ranges from smaller to larger
@@ -180,7 +211,10 @@ namespace NinovaGamesCase.Core
 
             return null;
         }
-        
+
+        /// <summary>
+        /// Snaps the block back to its currently occupied node.
+        /// </summary>
         private void SnapToCurrentNode()
         {
             var node = Grid.Instance.GetSnappedNode(transform.position);
@@ -188,16 +222,19 @@ namespace NinovaGamesCase.Core
                 transform.position = node.WorldPosition;
         }
 
+        /// <summary>
+        /// Checks if all block meshes can be placed at the given world position.
+        /// </summary>
         private bool CanPlaceAllMeshesAt(Vector3 parentPosition)
         {
             foreach (var mesh in _blockMeshes)
             {
                 var meshWorldPos = parentPosition + mesh.transform.localPosition;
-                
+
                 var node = Grid.Instance.GetSnappedNode(meshWorldPos);
                 if (node == null || node.Block)
                     return false;
-                
+
                 if (mesh.CheckObstacle(meshWorldPos))
                     return false;
             }
@@ -205,6 +242,10 @@ namespace NinovaGamesCase.Core
             return true;
         }
 
+        /// <summary>
+        /// Attempts to drop the block onto the given node. 
+        /// If invalid, resets to its temporary saved nodes.
+        /// </summary>
         public void Drop(Node node, bool forced)
         {
             if (!_active) return;
@@ -231,6 +272,9 @@ namespace NinovaGamesCase.Core
             OutlineShader(false);
         }
 
+        /// <summary>
+        /// Clears the current nodes and optionally saves them into a temp list.
+        /// </summary>
         private void ResetNodes(bool save)
         {
             if (save) _tempNodes = _nodes.ToList();
@@ -242,6 +286,9 @@ namespace NinovaGamesCase.Core
             _nodes.Clear();
         }
 
+        /// <summary>
+        /// Restores nodes from the saved temp list when a move fails.
+        /// </summary>
         private void ResetToTempNodes()
         {
             _nodes = _tempNodes;
@@ -252,6 +299,10 @@ namespace NinovaGamesCase.Core
             OnMoveFailed?.Invoke();
         }
 
+        /// <summary>
+        /// Validates whether the block can be placed starting at the given pivot node.
+        /// Returns the list of valid nodes if successful.
+        /// </summary>
         private bool TryGetValidNodes(Node pivotNode, out List<Node> result)
         {
             result = new();
@@ -280,6 +331,10 @@ namespace NinovaGamesCase.Core
             return true;
         }
 
+        /// <summary>
+        /// Checks whether the block matches with a door,
+        /// and triggers forced drop or match event accordingly.
+        /// </summary>
         private void CheckDoorMatch(bool snapped)
         {
             var matchedDoor = FindMatchingDoor();
@@ -305,6 +360,9 @@ namespace NinovaGamesCase.Core
             }
         }
 
+        /// <summary>
+        /// Finds a door matching the block’s color under its meshes.
+        /// </summary>
         private Door FindMatchingDoor()
         {
             return _blockMeshes
@@ -313,6 +371,10 @@ namespace NinovaGamesCase.Core
                     door != null && door.LevelDoorData.ColorData.MatchColor == BlockData.ColorData.MatchColor);
         }
 
+        /// <summary>
+        /// Returns unique line keys (x or z coordinates) 
+        /// based on door direction and snap state.
+        /// </summary>
         private HashSet<int> GetUniqueLines(LevelDoorDirection direction, bool snapped)
         {
             var lines = new HashSet<int>();
@@ -334,6 +396,9 @@ namespace NinovaGamesCase.Core
             return lines;
         }
 
+        /// <summary>
+        /// Computes a line key (x or z) from world position depending on door direction.
+        /// </summary>
         private int GetLineKey(Vector3 pos, LevelDoorDirection dir)
         {
             return (dir is LevelDoorDirection.Up or LevelDoorDirection.Down)
@@ -341,12 +406,18 @@ namespace NinovaGamesCase.Core
                 : Mathf.RoundToInt(pos.z);
         }
 
+        /// <summary>
+        /// Toggles the block’s outline highlight effect.
+        /// </summary>
         private void OutlineShader(bool state)
         {
             if (_highlightEffect != null)
                 _highlightEffect.highlighted = state;
         }
 
+        /// <summary>
+        /// Handles block movement animation when matched with a door.
+        /// </summary>
         public void OnMatchedMove(Vector3 pos)
         {
             Grid.Instance.AllSpawnedBlocks.Remove(this);

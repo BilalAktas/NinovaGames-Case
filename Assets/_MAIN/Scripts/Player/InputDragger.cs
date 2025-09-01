@@ -4,6 +4,10 @@ using UnityEngine;
 
 namespace NinovaGamesCase.Core
 {
+    /// <summary>
+    /// Handles input for dragging and dropping objects that implement IDragable.
+    /// Also manages power-up usage input.
+    /// </summary>
     public class InputDragger : MonoBehaviour
     {
         private Camera _camera;
@@ -25,32 +29,36 @@ namespace NinovaGamesCase.Core
 
         private void Update()
         {
-            if (GameManager.Instance.GameState == GameState.Idle)
-                return;
+            if (GameManager.Instance.GameState == GameState.Idle) return;
 
-            if (PowerUpActionManager.Instance.PowerUp == PowerUp.None)
+            if (PowerUpActionManager.Instance.PowerUp != PowerUp.None)
             {
-                HandleInput();
+                if (Input.GetMouseButtonDown(0)) 
+                    HandlePowerUpSelection(Input.mousePosition);
+                return;
             }
-            else
-            {
-                if(Input.GetMouseButtonDown(0)) HandlePowerUpSelection(Input.mousePosition);
-            }
+
+            HandleInput();
        
         }
 
+        /// <summary>
+        /// Handles the selection of a block when a power-up is active.
+        /// </summary>
+        /// <param name="pos">Screen position of the input.</param>
         private void HandlePowerUpSelection(Vector2 pos)
         {
-            if (!PowerUpActionManager.Instance.CanUse)
-                return;
-            
-            var selectedObject = GetObject(pos);
-            if (selectedObject && selectedObject.TryGetComponent(out IDragable dragable))
+            if (!PowerUpActionManager.Instance.CanUse) return;
+
+            if (TryGetDragableAtPosition(pos, out var dragable))
             {
                 OnPowerUpUsed?.Invoke(dragable.GetBlock());
             }
         }
 
+        /// <summary>
+        /// Handles drag input when no power-up is active.
+        /// </summary>
         private void HandleInput()
         {
             // if (Input.touchCount <= 0)
@@ -78,16 +86,30 @@ namespace NinovaGamesCase.Core
                 HandleDrop(Input.mousePosition, false);
         }
 
+        /// <summary>
+        /// Starts dragging the object under the input position.
+        /// </summary>
+        /// <param name="pos">Screen position of the input.</param>
         private void HandleStartDrag(Vector2 pos)
         {
-            var selectedObject = GetObject(pos);
-            if (selectedObject && selectedObject.TryGetComponent(out IDragable dragable))
+            if (TryGetDragableAtPosition(pos, out var dragable))
             {
                 selectedDragableObject = dragable;
-                dragable.StartDrag();   
+                dragable.StartDrag();
             }
         }
+        
+        private bool TryGetDragableAtPosition(Vector2 pos, out IDragable dragable)
+        {
+            dragable = null;
+            var selectedObject = GetObject(pos);
+            return selectedObject != null && selectedObject.TryGetComponent(out dragable);
+        }
 
+        /// <summary>
+        /// Updates the position of the dragged object based on input position.
+        /// </summary>
+        /// <param name="pos">Screen position of the input.</param>
         private void HandleDragging(Vector2 pos)
         {
             if (selectedDragableObject == null)
@@ -96,6 +118,11 @@ namespace NinovaGamesCase.Core
             selectedDragableObject.Dragging(GetWorldPosition(pos));
         }
 
+        /// <summary>
+        /// Drops the dragged object onto the closest snapped node.
+        /// </summary>
+        /// <param name="pos">Screen position of the input.</param>
+        /// <param name="forced">Whether the drop is forced or not.</param>
         private void HandleDrop(Vector2 pos, bool forced)
         {
             if (selectedDragableObject == null)
@@ -107,6 +134,11 @@ namespace NinovaGamesCase.Core
             selectedDragableObject = null;
         }
 
+        /// <summary>
+        /// Converts screen position to a world position on the XZ plane.
+        /// </summary>
+        /// <param name="pos">Screen position.</param>
+        /// <returns>World position on XZ plane.</returns>
         private Vector3 GetWorldPosition(Vector2 pos)
         {
             var ray = _camera.ScreenPointToRay(pos);
@@ -121,6 +153,11 @@ namespace NinovaGamesCase.Core
             return Vector3.zero;
         }
 
+        /// <summary>
+        /// Returns the GameObject hit by a raycast from the input screen position.
+        /// </summary>
+        /// <param name="pos">Screen position.</param>
+        /// <returns>GameObject hit or null if nothing hit.</returns>
         private GameObject GetObject(Vector2 pos)
         {
             var ray = _camera.ScreenPointToRay(pos);

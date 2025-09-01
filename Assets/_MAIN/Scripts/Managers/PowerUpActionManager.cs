@@ -7,7 +7,14 @@ using Grid = NinovaGamesCase.Core.Grid;
 
 namespace NinovaGamesCase.Managers
 {
+    /// <summary>
+    /// Enum representing available power-up types.
+    /// </summary>
     public enum PowerUp {None, Vacuum}
+    
+    /// <summary>
+    /// Manages power-up usage and their corresponding actions in the game.
+    /// </summary>
     public class PowerUpActionManager : Singleton<PowerUpActionManager>
     {
         public static event Action OnPowerUpCompleted;
@@ -37,6 +44,11 @@ namespace NinovaGamesCase.Managers
             InputDragger.OnPowerUpUsed -= PowerUpAction;
         }
 
+        /// <summary>
+        /// Called when a power-up is selected from the UI.
+        /// Triggers related animations.
+        /// </summary>
+        /// <param name="powerUp">Selected power-up type.</param>
         private void OnUsedPowerUp(PowerUp powerUp)
         {
             PowerUp = powerUp;
@@ -48,6 +60,10 @@ namespace NinovaGamesCase.Managers
             }
         }
 
+        /// <summary>
+        /// Executes the action associated with the currently selected power-up.
+        /// </summary>
+        /// <param name="selectedBlock">The block targeted by the power-up.</param>
         private void PowerUpAction(Block selectedBlock)
         {
             Debug.Log(selectedBlock.BlockData.ColorData.MatchColor);
