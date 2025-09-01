@@ -59,6 +59,18 @@ namespace NinovaGamesCase.Helpers
             var offset = direction * scale;
             return box.bounds.center + offset;
         }
+        
+        public static Color DarkenColor(Color color)
+        {
+            var darkenFactor = .1f;
+            return new Color(
+                Mathf.Clamp01(color.r * darkenFactor),
+                Mathf.Clamp01(color.g * darkenFactor),
+                Mathf.Clamp01(color.b * darkenFactor),
+                color.a
+            );
+        }
+
     }    
 }
 

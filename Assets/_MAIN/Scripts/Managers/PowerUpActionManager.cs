@@ -50,14 +50,14 @@ namespace NinovaGamesCase.Managers
 
         private void PowerUpAction(Block selectedBlock)
         {
-            Debug.Log(selectedBlock.BlockData.ColorData.Color);
+            Debug.Log(selectedBlock.BlockData.ColorData.MatchColor);
             switch (PowerUp)
             {
                 case PowerUp.Vacuum:
 
                     CanUse = false;
                     
-                    var allBlockByColor = Grid.Instance.GetAllBlockByColor(selectedBlock.BlockData.ColorData.Color);
+                    var allBlockByColor = Grid.Instance.GetAllBlockByColor(selectedBlock.BlockData.ColorData.MatchColor);
                     foreach (var block in allBlockByColor)
                     {
                         block.OnVacuumPowerUp(_vacuumBlockPlace.position);
@@ -65,6 +65,7 @@ namespace NinovaGamesCase.Managers
 
                     DOVirtual.DelayedCall(.6f, () =>
                     {
+                        MatchManager.OnMatchedCompleted?.Invoke();
                         _vacuumAnim.SetTrigger(_OFF);
 
                         DOVirtual.DelayedCall(.6f, () =>

@@ -20,26 +20,26 @@ MonoBehaviour:
     - {x: 0, y: 0}
     BlockData:
       ColorData:
-        Color: Blue
+        MatchColor: 0
         ColorMaterial: {fileID: 2100000, guid: 0f5ec90eb8e9a07489926830fbfa122d, type: 2}
   - GridPosition: {x: 2, y: 4}
     MeshPositions:
     - {x: 0, y: 0}
     BlockData:
       ColorData:
-        Color: Red
+        MatchColor: 2
         ColorMaterial: {fileID: 2100000, guid: 1866f86c31f04464589aa307469af5ee, type: 2}
   _levelDoorData:
   - GridPosition: {x: 2, y: 0}
     Length: 1
     ColorData:
-      Color: Blue
+      MatchColor: 0
       ColorMaterial: {fileID: 2100000, guid: 0f5ec90eb8e9a07489926830fbfa122d, type: 2}
     Direction: 1
   - GridPosition: {x: 0, y: 2}
     Length: 1
     ColorData:
-      Color: Red
+      MatchColor: 2
       ColorMaterial: {fileID: 2100000, guid: 1866f86c31f04464589aa307469af5ee, type: 2}
     Direction: 3
   _time: 60

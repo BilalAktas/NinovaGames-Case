@@ -26,7 +26,9 @@ namespace NinovaGamesCase.Core
         [SerializeField] private GameObject _cornerPrefab;
         [SerializeField] private GameObject _groundBGPrefab;
 
-        private List<Block> _allSpawnedBlocks = new();
+        private Vector3 _gridBottomLeft;
+
+        public List<Block> AllSpawnedBlocks { get; private set; }
         private List<Door> _spawnedDoors = new();
 
 
@@ -36,10 +38,11 @@ namespace NinovaGamesCase.Core
             {
                 Destroy(child.gameObject);
             }
-            _allSpawnedBlocks.Clear();
+
+            AllSpawnedBlocks.Clear();
             _spawnedDoors.Clear();
         }
-        
+
         public void CreateGrid()
         {
             _grid = new Node[LevelManager.CurrentConfig.GridSize.x, LevelManager.CurrentConfig.GridSize.y];
@@ -48,16 +51,21 @@ namespace NinovaGamesCase.Core
             var totalSize = new Vector2(LevelManager.CurrentConfig.GridSize.x * LevelManager.CurrentConfig.NodeSize.x,
                 LevelManager.CurrentConfig.GridSize.y * LevelManager.CurrentConfig.NodeSize.y);
 
-            var bottomLeft = center - new Vector2(totalSize.x, totalSize.y) / 2 + new Vector2(LevelManager.CurrentConfig.NodeSize.x
+            var bottomLeft = center - new Vector2(totalSize.x, totalSize.y) / 2 + new Vector2(
+                LevelManager.CurrentConfig.NodeSize.x
                 , LevelManager.CurrentConfig.NodeSize.y) / 2;
+
+            _gridBottomLeft = new Vector3(bottomLeft.x, 0, bottomLeft.y);
 
             for (var x = 0; x < LevelManager.CurrentConfig.GridSize.x; x++)
             {
                 for (var y = 0; y < LevelManager.CurrentConfig.GridSize.y; y++)
                 {
                     var worldPosition = Helpers.Helpers.Vector2ToVector3(bottomLeft +
-                                                                         new Vector2(x * LevelManager.CurrentConfig.NodeSize.x,
-                                                                             y * LevelManager.CurrentConfig.NodeSize.y));
+                                                                         new Vector2(
+                                                                             x * LevelManager.CurrentConfig.NodeSize.x,
+                                                                             y * LevelManager.CurrentConfig.NodeSize
+                                                                                 .y));
                     worldPosition.y = -.5f;
                     var gridPosition = new Vector2Int(x, y);
                     var node = new Node(gridPosition, worldPosition);
@@ -79,12 +87,13 @@ namespace NinovaGamesCase.Core
             }
 
 
+            AllSpawnedBlocks = new List<Block>();
             foreach (var data in LevelManager.CurrentConfig.LevelBlockData)
             {
                 var blockClone = Instantiate(_blockPrefab, transform);
                 var block = blockClone.GetComponent<Block>();
                 block.Initialize(data);
-                _allSpawnedBlocks.Add(block);
+                AllSpawnedBlocks.Add(block);
                 blockClone.SetActive(true);
             }
 
@@ -114,7 +123,8 @@ namespace NinovaGamesCase.Core
                         break;
 
                     case 3:
-                        var node3 = _grid[LevelManager.CurrentConfig.GridSize.x - 1, LevelManager.CurrentConfig.GridSize.y - 1];
+                        var node3 = _grid[LevelManager.CurrentConfig.GridSize.x - 1,
+                            LevelManager.CurrentConfig.GridSize.y - 1];
                         pos = node3.WorldPosition + (Vector3.right * 1 + Vector3.forward * 1);
                         rot = Quaternion.Euler(0, 90f, 0);
                         break;
@@ -125,120 +135,148 @@ namespace NinovaGamesCase.Core
                 cornerClone.transform.rotation = rot;
                 cornerClone.SetActive(true);
             }
-            
+
             var groundBGClone = Instantiate(_groundBGPrefab, transform);
             var groundScaleX = .7f + (.1f * (LevelManager.CurrentConfig.GridSize.x - 3));
             var groundScaleY = .7f + (.1f * (LevelManager.CurrentConfig.GridSize.y - 3));
             groundBGClone.transform.localScale = new Vector3(groundScaleX, groundScaleY);
             groundBGClone.SetActive(true);
-            
-            
+
+
             CreateWalls();
         }
-        
-           private void CreateWalls()
-            {
-                for (var i = 0; i < 4; i++)
-                {
-                    var edge = (Edge)i;
-                    var groupedNodes = GetWallGroupsForEdge(edge);
 
-                    var direction = edge switch
+        private void CreateWalls()
+        {
+            for (var i = 0; i < 4; i++)
+            {
+                var edge = (Edge)i;
+                var groupedNodes = GetWallGroupsForEdge(edge);
+
+                var direction = edge switch
+                {
+                    Edge.Down => LevelDoorDirection.Down,
+                    Edge.Right => LevelDoorDirection.Right,
+                    Edge.Up => LevelDoorDirection.Up,
+                    Edge.Left => LevelDoorDirection.Left,
+                    _ => LevelDoorDirection.Down
+                };
+
+                foreach (var nodes in groupedNodes)
+                {
+                    var wallClone = Instantiate(_wallPrefab, transform);
+                    var levelWallData = new LevelWallData()
                     {
-                        Edge.Down => LevelDoorDirection.Down,
-                        Edge.Right => LevelDoorDirection.Right,
-                        Edge.Up => LevelDoorDirection.Up,
-                        Edge.Left => LevelDoorDirection.Left,
-                        _ => LevelDoorDirection.Down
+                        Direction = direction,
+                        GridPosition = nodes[0].GridPosition,
+                        Length = nodes.Count
+                    };
+                    wallClone.GetComponent<Wall>().Initialize(levelWallData);
+                    wallClone.SetActive(true);
+                }
+            }
+        }
+
+        private List<List<Node>> GetWallGroupsForEdge(Edge edge)
+        {
+            var groupedNodes = new List<List<Node>>();
+            var currentGroup = new List<Node>();
+
+            var limit = (edge == Edge.Down || edge == Edge.Up)
+                ? LevelManager.CurrentConfig.GridSize.x
+                : LevelManager.CurrentConfig.GridSize.y;
+
+            for (var s = 0; s < limit;)
+            {
+                currentGroup = new List<Node>();
+
+                for (var j = s; j < limit; j++)
+                {
+                    var node = edge switch
+                    {
+                        Edge.Down => _grid[j, 0],
+                        Edge.Right => _grid[LevelManager.CurrentConfig.GridSize.x - 1, j],
+                        Edge.Up => _grid[j, LevelManager.CurrentConfig.GridSize.y - 1],
+                        Edge.Left => _grid[0, j],
+                        _ => null
                     };
 
-                    foreach (var nodes in groupedNodes)
+                    var isDoorNode = _spawnedDoors.Any(door =>
+                        door.CurrentNodes.Contains(node) &&
+                        GetEdgeFromDirection(door.LevelDoorData.Direction) == edge
+                    );
+
+                    if (isDoorNode)
                     {
-                        var wallClone = Instantiate(_wallPrefab, transform);
-                        var levelWallData = new LevelWallData()
-                        {
-                            Direction = direction,
-                            GridPosition = nodes[0].GridPosition,
-                            Length = nodes.Count
-                        };
-                        wallClone.GetComponent<Wall>().Initialize(levelWallData);
-                        wallClone.SetActive(true);
+                        s = j + 1;
+                        break;
                     }
+
+                    currentGroup.Add(node);
+                    s = j + 1;
                 }
-            }
 
-            private List<List<Node>> GetWallGroupsForEdge(Edge edge)
-            {
-                var groupedNodes = new List<List<Node>>();
-                var currentGroup = new List<Node>();
-
-                var limit = (edge == Edge.Down || edge == Edge.Up) ? LevelManager.CurrentConfig.GridSize.x : LevelManager.CurrentConfig.GridSize.y;
-
-                for (var s = 0; s < limit;)
+                if (currentGroup.Count > 0)
                 {
-                    var checkDoor = false;
-
-                    for (var j = s; j < limit; j++)
-                    {
-                        var node = edge switch
-                        {
-                            Edge.Down => _grid[j, 0],
-                            Edge.Right => _grid[LevelManager.CurrentConfig.GridSize.x - 1, j],
-                            Edge.Up => _grid[j, LevelManager.CurrentConfig.GridSize.y - 1],
-                            Edge.Left => _grid[0, j],
-                            _ => null
-                        };
-                        
-                        foreach (var door in _spawnedDoors)
-                        {
-                            if (door.CurrentNodes.Contains(node))
-                            {
-                                checkDoor = true;
-                                break;
-                            }
-                        }
-
-                        s++;
-
-                        if (checkDoor)
-                            break;
-
-                        currentGroup.Add(node);
-                    }
-
-                    if (currentGroup.Count > 0)
-                    {
-                        groupedNodes.Add(currentGroup);
-                        currentGroup = new List<Node>();
-                    }
+                    groupedNodes.Add(currentGroup);
                 }
-
-                return groupedNodes;
             }
 
-        public Node GetSnappedNode(Vector3 pos)
+            return groupedNodes;
+        }
+        
+        private Edge GetEdgeFromDirection(LevelDoorDirection direction)
         {
-            var m_GridSize = new Vector3(LevelManager.CurrentConfig.NodeSize.x, 0, LevelManager.CurrentConfig.NodeSize.y);
-            var p = new Vector3(
-                Mathf.RoundToInt(pos.x / m_GridSize.x) * m_GridSize.x,
-                Mathf.RoundToInt(pos.y / m_GridSize.y) * m_GridSize.y,
-                Mathf.RoundToInt(pos.z / m_GridSize.z) * m_GridSize.z);
+            return direction switch
+            {
+                LevelDoorDirection.Down => Edge.Down,
+                LevelDoorDirection.Right => Edge.Right,
+                LevelDoorDirection.Up => Edge.Up,
+                LevelDoorDirection.Left => Edge.Left,
+                _ => Edge.Down
+            };
+        }
 
-            p.y = -.5f;
+        public Node GetClosestAvailableNode(Vector3 worldPos)
+        {
+            Node closest = null;
+            var closestDist = float.MaxValue;
+
             foreach (var node in _grid)
             {
-                if (node.WorldPosition == p)
-                    return node;
+                if (node.Block) continue;
+                var dist = Vector3.Distance(worldPos, node.WorldPosition);
+                if (dist < closestDist)
+                {
+                    closest = node;
+                    closestDist = dist;
+                }
             }
 
+            return closest;
+        }
+        
+        public Node GetSnappedNode(Vector3 pos)
+        {
+            var nodeSize = LevelManager.CurrentConfig.NodeSize;
+            
+            var snappedX = Mathf.RoundToInt(pos.x / nodeSize.x) * nodeSize.x;
+            var snappedZ = Mathf.RoundToInt(pos.z / nodeSize.y) * nodeSize.y;
+            
+            var gridX = Mathf.RoundToInt((snappedX - _gridBottomLeft.x) / nodeSize.x);
+            var gridY = Mathf.RoundToInt((snappedZ - _gridBottomLeft.z) / nodeSize.y);
 
-            return null;
+            if (!IsNodeInBounds(new Vector2Int(gridX,gridY)))
+                return null;
+            
+            return _grid[gridX, gridY];
         }
 
         public bool IsNodeInBounds(Vector2Int pos) =>
-            pos.x >= 0 && pos.x < LevelManager.CurrentConfig.GridSize.x && pos.y >= 0 && pos.y < LevelManager.CurrentConfig.GridSize.y;
+            pos.x >= 0 && pos.x < LevelManager.CurrentConfig.GridSize.x && pos.y >= 0 &&
+            pos.y < LevelManager.CurrentConfig.GridSize.y;
 
-        public List<Block> GetAllBlockByColor(string color) =>
-            _allSpawnedBlocks.FindAll(s => s.BlockData.ColorData.Color == color);
+        public List<Block> GetAllBlockByColor(MatchColor color) =>
+            AllSpawnedBlocks.FindAll(s => s.BlockData.ColorData.MatchColor == color);
     }
 }

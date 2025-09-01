@@ -102,7 +102,7 @@ namespace NinovaGamesCase.Core
             if (selectedDragableObject == null)
                 return;
             
-            var node = Grid.Instance.GetSnappedNode(selectedDragableObject.GetPosition(GetWorldPosition(pos)));
+            var node = Grid.Instance.GetSnappedNode(selectedDragableObject.GetPosition());
             
             selectedDragableObject.Drop(node, forced);
             selectedDragableObject = null;

@@ -7,7 +7,7 @@ namespace NinovaGamesCase.Managers
 {
     public class MatchManager : MonoBehaviour
     {
-        public static event Action OnMatchedCompleted;
+        public static Action OnMatchedCompleted;
         public static event Action OnLevelCompleted;
         private int _matchedAmount;
         

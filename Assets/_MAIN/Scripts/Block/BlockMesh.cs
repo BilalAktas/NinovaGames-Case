@@ -23,9 +23,9 @@ namespace NinovaGamesCase.Core
 
         #region IDRAGABLE
         
-        public Vector3 GetPosition(Vector3 pos) => transform.parent.position;
+        public Vector3 GetPosition() => transform.parent.position;
         public void StartDrag() => _block.StartDrag();
-        public void Dragging(Vector3 pos) => _block.Dragging(pos, transform.position);
+        public void Dragging(Vector3 pos) => _block.Dragging(pos, transform);
         public void Drop(Node node, bool forced) => _block.Drop(node, forced);
 
         public Block GetBlock() => _block;
@@ -49,37 +49,39 @@ namespace NinovaGamesCase.Core
         
         public bool CheckObstacle(Vector3 pos)
         {
-            var newPos = pos + transform.localPosition;
+            var newPos = pos;
             newPos.y = transform.parent.position.y;
             
             var dir = (newPos - transform.position).normalized;
             
-            var halfExtents = Vector3.Scale(_collider.size * .35f, transform.lossyScale);
+            var halfExtents = Vector3.Scale(new Vector3(_collider.size.x * .3f, 2, _collider.size.z * .3f), transform.lossyScale);
             
             var origin = transform.position;
             
             var castDistance = Vector3.Distance(origin, newPos);
             
-            RaycastHit hit;
-            var hasHit = Physics.BoxCast(
+             RaycastHit hit;
+            // var hasHit = Physics.BoxCast(
+            //     origin,
+            //     halfExtents,
+            //     dir,
+            //     out hit,
+            //     transform.rotation,
+            //     castDistance
+            // );
+          
+            
+            var radius = Mathf.Min(halfExtents.x, halfExtents.z);
+            var hasHit = Physics.SphereCast(
                 origin,
-                halfExtents,
+                radius,
                 dir,
                 out hit,
-                transform.rotation,
                 castDistance
-            );
+            );  
 
             if (hasHit && !hit.transform.IsChildOf(transform.parent))
-            {
-                Debug.DrawRay(origin, dir * hit.distance, Color.red);
-                
-                var margin = 0.01f;
-                var stopParentPosition = hit.point - transform.localPosition - dir * margin;
-                stopParentPosition.y = transform.parent.position.y;
-
                 return true;
-            }
 
             return false;
         }

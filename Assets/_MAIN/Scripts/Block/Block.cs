@@ -8,10 +8,18 @@ using UnityEngine;
 
 namespace NinovaGamesCase.Core
 {
+    public enum MatchColor
+    {
+        Blue,
+        Green,
+        Red,
+        Yellow
+    }
+
     [Serializable]
     public struct ColorData
     {
-        public string Color;
+        public MatchColor MatchColor;
         public Material ColorMaterial;
     }
 
@@ -70,26 +78,26 @@ namespace NinovaGamesCase.Core
 
             foreach (var mesh in _blockMeshes)
                 mesh.SetColor(BlockData.ColorData.ColorMaterial);
+
+            var _color = transform.GetChild(0).GetComponent<Renderer>().material.GetColor("_Color");
+            _highlightEffect.outlineColor = Helpers.Helpers.DarkenColor(_color);
         }
 
         public void OnVacuumPowerUp(Vector3 targetPos)
         {
             _active = false;
-            
+
             foreach (var node in _nodes)
                 node.SetBlock(null);
-            
+
             _nodes.Clear();
-            
+
             OutlineShader(true);
-            
+
             transform.DOScale(Vector3.zero, .5f).SetEase(Ease.Linear);
-            transform.DOMove(targetPos, .5f).SetEase(Ease.Linear).OnComplete(() =>
-            {
-                OnMatched?.Invoke(null,null);
-            });
+            transform.DOMove(targetPos, .5f).SetEase(Ease.Linear).OnComplete(() => { OnMatched?.Invoke(null, null); });
         }
-        
+
         public void StartDrag()
         {
             if (!_active) return;
@@ -98,26 +106,103 @@ namespace NinovaGamesCase.Core
             ResetNodes(save: true);
         }
 
-        public void Dragging(Vector3 inputPos, Vector3 meshPos)
+        public void Dragging(Vector3 inputPos, Transform grabbedMesh)
         {
             if (!_active) return;
 
-            var offset = meshPos - transform.position;
-            var targetPos = inputPos - offset;
-            targetPos.y = -0.5f;
+            // Try to get a node under the cursor
+            var grabbedNode = Grid.Instance.GetSnappedNode(inputPos) 
+                              ?? Grid.Instance.GetClosestAvailableNode(inputPos);
 
-            var moveDir = targetPos - transform.position;
-            var nextPos = transform.position + moveDir * (Time.deltaTime * 10f);
+            if (grabbedNode == null)
+            {
+                SnapToCurrentNode();
+                return;
+            }
 
-            if (CanMoveTo(nextPos))
-                transform.position = nextPos;
+            // Calculate offset based on grabbed mesh
+            var offset = grabbedNode.WorldPosition - grabbedMesh.position;
+            var desiredPosition = transform.position + offset;
+
+            // Try to find a valid nearby position to place the parent
+            var targetPos = FindClosestValidPosition(grabbedNode, grabbedMesh, desiredPosition);
+
+            if (targetPos.HasValue)
+            {
+                // Smoothly move toward valid position
+                transform.position = Vector3.Lerp(transform.position, targetPos.Value, Time.deltaTime * 10f);
+            }
+            else
+            {
+                SnapToCurrentNode();
+            }
+
+            // Fix Y axis
+            var p = transform.position;
+            p.y = -0.25f;
+            transform.position = p;
 
             CheckDoorMatch(snapped: false);
         }
 
-        private bool CanMoveTo(Vector3 pos)
+      
+        private Vector3? FindClosestValidPosition(Node grabbedNode, Transform grabbedMesh, Vector3 desiredPos)
         {
-            return _blockMeshes.All(mesh => !mesh.CheckObstacle(pos));
+            // Try ranges from smaller to larger
+            for (var range = 1; range <= 2; range++)
+            {
+                Vector3? bestPos = null;
+                var closestDist = float.MaxValue;
+
+                for (var dx = -range; dx <= range; dx++)
+                {
+                    for (var dz = -range; dz <= range; dz++)
+                    {
+                        var testPos = desiredPos + new Vector3(dx, 0, dz);
+
+                        if (!CanPlaceAllMeshesAt(testPos))
+                            continue;
+
+                        var testGrabbedMeshPos = testPos + grabbedMesh.localPosition;
+                        var dist = Vector3.Distance(testGrabbedMeshPos, grabbedNode.WorldPosition);
+
+                        if (dist < closestDist)
+                        {
+                            closestDist = dist;
+                            bestPos = testPos;
+                        }
+                    }
+                }
+
+                if (bestPos.HasValue)
+                    return bestPos; // Early return if found in this range
+            }
+
+            return null;
+        }
+        
+        private void SnapToCurrentNode()
+        {
+            var node = Grid.Instance.GetSnappedNode(transform.position);
+            if (node != null)
+                transform.position = node.WorldPosition;
+        }
+
+        private bool CanPlaceAllMeshesAt(Vector3 parentPosition)
+        {
+            foreach (var mesh in _blockMeshes)
+            {
+                var meshWorldPos = parentPosition + mesh.transform.localPosition;
+                
+                var node = Grid.Instance.GetSnappedNode(meshWorldPos);
+                if (node == null || node.Block)
+                    return false;
+                
+                if (mesh.CheckObstacle(meshWorldPos))
+                    return false;
+            }
+
+            return true;
         }
 
         public void Drop(Node node, bool forced)
@@ -225,7 +310,7 @@ namespace NinovaGamesCase.Core
             return _blockMeshes
                 .Select(mesh => mesh.CheckDoor())
                 .FirstOrDefault(door =>
-                    door != null && door.LevelDoorData.ColorData.Color == BlockData.ColorData.Color);
+                    door != null && door.LevelDoorData.ColorData.MatchColor == BlockData.ColorData.MatchColor);
         }
 
         private HashSet<int> GetUniqueLines(LevelDoorDirection direction, bool snapped)
@@ -264,8 +349,10 @@ namespace NinovaGamesCase.Core
 
         public void OnMatchedMove(Vector3 pos)
         {
+            Grid.Instance.AllSpawnedBlocks.Remove(this);
             pos.y = transform.position.y;
             transform.DOMove(pos, 2f).SetEase(Ease.Linear);
+            //transform.DOScale(Vector3.zero, 2f).SetEase(Ease.Linear);
         }
     }
 }
