@@ -144,6 +144,32 @@ namespace NinovaGamesCase.Core
 
 
             CreateWalls();
+
+            AdjustCamera(Camera.main);
+        }
+        
+        private void AdjustCamera(Camera cam)
+        {
+            var gridSize = LevelManager.CurrentConfig.GridSize;
+            var nodeSize = LevelManager.CurrentConfig.NodeSize;
+
+            var totalSize = new Vector2(gridSize.x * nodeSize.x, gridSize.y * nodeSize.y);
+            var gridCenter = _gridBottomLeft + new Vector3(totalSize.x / 2f, 0f, totalSize.y / 2f);
+    
+            var refSize = 3;
+            var refY = 12f;
+            var refZ = -4f;
+            
+            var sizeFactor = Mathf.Sqrt(Mathf.Max(gridSize.x, gridSize.y) / (float)refSize);
+    
+            var newPos = new Vector3(
+                0,
+                refY * sizeFactor,
+                gridCenter.z + refZ * sizeFactor
+            );
+
+            cam.transform.position = newPos;
+            cam.transform.rotation = Quaternion.Euler(75f, 0f, 0f);
         }
 
         private void CreateWalls()

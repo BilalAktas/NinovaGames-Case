@@ -12,24 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6bec8cb79c32c8a4998f87c12354f284, type: 3}
   m_Name: test
   m_EditorClassIdentifier: 
-  _gridSize: {x: 5, y: 5}
+  _gridSize: {x: 4, y: 8}
   _nodeSize: {x: 1, y: 1}
-  _levelBlockData:
-  - GridPosition: {x: 0, y: 2}
-    MeshPositions:
-    - {x: 0, y: 0}
-    - {x: 0, y: 1}
-    - {x: 1, y: 1}
-    BlockData:
-      ColorData:
-        Color: Blue
-        ColorMaterial: {fileID: 2100000, guid: 0f5ec90eb8e9a07489926830fbfa122d, type: 2}
-  - GridPosition: {x: 3, y: 2}
-    MeshPositions:
-    - {x: 0, y: 0}
-    BlockData:
-      ColorData:
-        Color: Blue
-        ColorMaterial: {fileID: 2100000, guid: 0f5ec90eb8e9a07489926830fbfa122d, type: 2}
+  _levelBlockData: []
   _levelDoorData: []
   _time: 3000

@@ -8,7 +8,6 @@ namespace NinovaGamesCase.Core
     {
         private Camera _camera;
         private IDragable selectedDragableObject;
-        [SerializeField] private float _draggerPosZ;
 
         public static event Action<Block> OnPowerUpUsed;
 
@@ -110,8 +109,16 @@ namespace NinovaGamesCase.Core
 
         private Vector3 GetWorldPosition(Vector2 pos)
         {
-            var point = new Vector3(pos.x, pos.y, _draggerPosZ);
-            return _camera.ScreenToWorldPoint(point);
+            var ray = _camera.ScreenPointToRay(pos);
+            
+            var plane = new Plane(Vector3.up, Vector3.zero);
+
+            if (plane.Raycast(ray, out float distance))
+            {
+                return ray.GetPoint(distance);
+            }
+
+            return Vector3.zero;
         }
 
         private GameObject GetObject(Vector2 pos)

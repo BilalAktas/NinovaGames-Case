@@ -20,13 +20,13 @@ MonoBehaviour:
     - {x: 0, y: 0}
     BlockData:
       ColorData:
-        Color: Blue
+        MatchColor: 0
         ColorMaterial: {fileID: 2100000, guid: 0f5ec90eb8e9a07489926830fbfa122d, type: 2}
   _levelDoorData:
   - GridPosition: {x: 2, y: 0}
     Length: 1
     ColorData:
-      Color: Blue
+      MatchColor: 0
       ColorMaterial: {fileID: 2100000, guid: 0f5ec90eb8e9a07489926830fbfa122d, type: 2}
     Direction: 1
   _time: 60
