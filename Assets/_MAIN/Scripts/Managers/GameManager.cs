@@ -37,6 +37,8 @@ namespace NinovaGamesCase.Managers
 
         private void Awake()
         {
+            //Application.targetFrameRate = 60; // build.
+            
             MatchManager.OnLevelCompleted += OnLevelCompleted;
             LevelManager.OnLevelLoaded += OnLevelLoaded;
         }
