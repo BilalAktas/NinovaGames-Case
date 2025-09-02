@@ -42,9 +42,17 @@ All mechanics were created from scratch using Unity 2022.3.5f1.
 
 * APK build is included — you can download and play it on an Android device.
 
-* Gameplay Video
+* Gameplay Video 
 
-  
+EDITOR
 
 https://github.com/user-attachments/assets/2c2bfb25-c1d1-4768-a352-3865e7eaefb7
+
+ANDROID
+
+
+
+https://github.com/user-attachments/assets/0b071b4c-b2dc-4470-9287-88204201b4c3
+
+
 
