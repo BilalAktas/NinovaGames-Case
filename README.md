@@ -2,7 +2,7 @@
 
 This is a clone of Color Block Jam, made as a personal case study.
 
-All mechanics were created from scratch using Unity 2022.3.5f1.
+All mechanics were created from scratch using Unity 2022.3.51f.
 
 🔧 Features
 
