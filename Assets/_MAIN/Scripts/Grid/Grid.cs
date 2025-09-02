@@ -25,11 +25,12 @@ namespace NinovaGamesCase.Core
         [SerializeField] private GameObject _nodePrefab;
         [SerializeField] private GameObject _doorPrefab;
         [SerializeField] private GameObject _wallPrefab;
-        [SerializeField] private GameObject _blockPrefab;
+        [SerializeField] private GameObject _freeBlockPrefab;
+        [SerializeField] private GameObject _limitedBlockPrefab;
         [SerializeField] private GameObject _cornerPrefab;
         [SerializeField] private GameObject _groundBGPrefab;
 
-        private Vector3 _gridBottomLeft;
+        [HideInInspector] public Vector3 GridBottomLeft { get; private set; }
 
         public List<Block> AllSpawnedBlocks { get; private set; }
         private List<Door> _spawnedDoors = new();
@@ -73,7 +74,7 @@ namespace NinovaGamesCase.Core
             var totalSize = new Vector2(config.GridSize.x * config.NodeSize.x, config.GridSize.y * config.NodeSize.y);
 
             var bottomLeft = center - totalSize / 2 + config.NodeSize / 2;
-            _gridBottomLeft = new Vector3(bottomLeft.x, 0, bottomLeft.y);
+            GridBottomLeft = new Vector3(bottomLeft.x, 0, bottomLeft.y);
         }
 
         /// <summary>
@@ -89,7 +90,7 @@ namespace NinovaGamesCase.Core
             var bottomLeft = origin - new Vector2(totalSize.x, totalSize.y) / 2 +
                              new Vector2(config.NodeSize.x, config.NodeSize.y) / 2;
             
-            _gridBottomLeft = new Vector3(bottomLeft.x, 0, bottomLeft.y);
+            GridBottomLeft = new Vector3(bottomLeft.x, 0, bottomLeft.y);
             
             for (var x = 0; x < config.GridSize.x; x++)
             {
@@ -132,7 +133,8 @@ namespace NinovaGamesCase.Core
             AllSpawnedBlocks = new List<Block>();
             foreach (var data in LevelManager.CurrentConfig.LevelBlockData)
             {
-                var blockClone = Instantiate(_blockPrefab, transform);
+                var blockPrefab = data.BlockData.LimitedDir == LimitedDir.None ? _freeBlockPrefab : _limitedBlockPrefab;
+                var blockClone = Instantiate(blockPrefab, transform);
                 var block = blockClone.GetComponent<Block>();
                 block.Initialize(data);
                 AllSpawnedBlocks.Add(block);
@@ -305,7 +307,7 @@ namespace NinovaGamesCase.Core
             var nodeSize = config.NodeSize;
 
             var totalSize = new Vector2(gridSize.x * nodeSize.x, gridSize.y * nodeSize.y);
-            var gridCenter = _gridBottomLeft + new Vector3(totalSize.x / 2f, 0f, totalSize.y / 2f);
+            var gridCenter = GridBottomLeft + new Vector3(totalSize.x / 2f, 0f, totalSize.y / 2f);
 
             const float refSize = 3f;
             const float refY = 12f;
@@ -351,17 +353,16 @@ namespace NinovaGamesCase.Core
         /// </summary>
         public Node GetSnappedNode(Vector3 pos)
         {
-            var nodeSize = LevelManager.CurrentConfig.NodeSize;
+            var config = LevelManager.CurrentConfig;
+            var size = config.NodeSize;
+            
+            var ix = Mathf.RoundToInt((pos.x - GridBottomLeft.x) / size.x);
+            var iy = Mathf.RoundToInt((pos.z - GridBottomLeft.z) / size.y);
+            
+            if (!IsNodeInBounds(new Vector2Int(ix,iy)))
+                return null;
 
-            var snappedX = Mathf.RoundToInt(pos.x / nodeSize.x) * (int)nodeSize.x;
-            var snappedZ = Mathf.RoundToInt(pos.z / nodeSize.y) * (int)nodeSize.y;
-
-            var gridX = Mathf.RoundToInt((snappedX - _gridBottomLeft.x) / nodeSize.x);
-            var gridY = Mathf.RoundToInt((snappedZ - _gridBottomLeft.z) / nodeSize.y);
-
-            if (!IsNodeInBounds(new Vector2Int(gridX, gridY))) return null;
-
-            return _grid[gridX, gridY];
+            return _grid[ix, iy];
         }
 
         /// <summary>

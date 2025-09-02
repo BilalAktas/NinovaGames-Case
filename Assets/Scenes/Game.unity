@@ -866,7 +866,9 @@ MonoBehaviour:
     type: 3}
   _wallPrefab: {fileID: 4051168038858232736, guid: 00ce9a7ee0969a14aac7a977c0c7e7fd,
     type: 3}
-  _blockPrefab: {fileID: 8637810422647768299, guid: 0e050a372f2094e4899d2505afacf83c,
+  _freeBlockPrefab: {fileID: 1342970255125847806, guid: b3003337ac8add54e895601a7cb3b72a,
+    type: 3}
+  _limitedBlockPrefab: {fileID: 6474043808288189578, guid: fa3266255b6966b4d82eaf71c731b32b,
     type: 3}
   _cornerPrefab: {fileID: 1008689585622688559, guid: d3ba8daaffbb3bf47bae8d8d674b5b66,
     type: 3}
@@ -1967,7 +1969,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000049591, y: 44.438297}
+  m_AnchoredPosition: {x: -0.000049591, y: 325.77}
   m_SizeDelta: {x: 1024, y: 316.63}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &698585556
@@ -3217,7 +3219,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.000049591, y: 44.438297}
+  m_AnchoredPosition: {x: -0.000049591, y: 325.77}
   m_SizeDelta: {x: 1024, y: 316.63}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1513425110
@@ -3351,6 +3353,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b15ac2d2c9e960c428424018ed19e848, type: 2}
   - {fileID: 11400000, guid: 3f58e3f529f8b9f4881d5057d3b05c73, type: 2}
   - {fileID: 11400000, guid: 6253800443bcec546be8aae7f09f7027, type: 2}
+  - {fileID: 11400000, guid: 44fd3ca9429cb4140aeb01d86bc67ff7, type: 2}
+  - {fileID: 11400000, guid: d3e68120254094b4eb8aececed9749d6, type: 2}
   _levelText: {fileID: 669206395}
   _nextLevelButton: {fileID: 1745057129}
   _failLevelButton: {fileID: 702860223}

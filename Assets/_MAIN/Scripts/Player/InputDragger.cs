@@ -61,29 +61,29 @@ namespace NinovaGamesCase.Core
         /// </summary>
         private void HandleInput()
         {
-            // if (Input.touchCount <= 0)
-            //     return;
+            if (Input.touchCount <= 0)
+                return;
+            
+            var touch = Input.GetTouch(0);
+            switch (touch.phase)
+            {
+                case TouchPhase.Began: HandleStartDrag(touch.position); break;
+                
+                case TouchPhase.Moved: 
+                case TouchPhase.Stationary: HandleDragging(touch.position); break;
+                
+                case TouchPhase.Canceled:
+                case TouchPhase.Ended: HandleDrop(touch.position, false); break;
+            }
+            
+            // if (Input.GetMouseButtonDown(0))
+            //     HandleStartDrag(Input.mousePosition);
             //
-            // var touch = Input.GetTouch(0);
-            // switch (touch.phase)
-            // {
-            //     case TouchPhase.Began: HandleStartDrag(touch.position); break;
-            //     
-            //     case TouchPhase.Moved: 
-            //     case TouchPhase.Stationary: HandleDragging(touch.position); break;
-            //     
-            //     case TouchPhase.Canceled:
-            //     case TouchPhase.Ended: HandleDrop(touch.position); break;
-            // }
-            
-            if (Input.GetMouseButtonDown(0))
-                HandleStartDrag(Input.mousePosition);
-            
-            if (Input.GetMouseButton(0))
-                HandleDragging(Input.mousePosition);
-            
-            if (Input.GetMouseButtonUp(0))
-                HandleDrop(Input.mousePosition, false);
+            // if (Input.GetMouseButton(0))
+            //     HandleDragging(Input.mousePosition);
+            //
+            // if (Input.GetMouseButtonUp(0))
+            //     HandleDrop(Input.mousePosition, false);
         }
 
         /// <summary>
@@ -135,19 +135,19 @@ namespace NinovaGamesCase.Core
         }
 
         /// <summary>
-        /// Converts screen position to a world position on the XZ plane.
+        /// Converts screen position to the nearest node center on the XZ plane.
+        /// Works for both odd and even grid sizes.
         /// </summary>
-        /// <param name="pos">Screen position.</param>
-        /// <returns>World position on XZ plane.</returns>
+        /// <param name="pos">Screen position (mouse/touch).</param>
+        /// <returns>Snapped world position on the grid.</returns>
         private Vector3 GetWorldPosition(Vector2 pos)
         {
             var ray = _camera.ScreenPointToRay(pos);
-            
-            var plane = new Plane(Vector3.up, Vector3.zero);
 
-            if (plane.Raycast(ray, out float distance))
+            var plane = new Plane(Vector3.up, new Vector3(0, -.5f, 0));
+            if (plane.Raycast(ray, out var distance))
             {
-                return ray.GetPoint(distance);
+               return ray.GetPoint(distance);
             }
 
             return Vector3.zero;

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DG.Tweening;
 using HighlightPlus;
+using NinovaGamesCase.Managers;
 using UnityEngine;
 
 namespace NinovaGamesCase.Core
@@ -36,6 +37,7 @@ namespace NinovaGamesCase.Core
     public struct BlockData
     {
         public ColorData ColorData;
+        public LimitedDir LimitedDir;
     }
 
     /// <summary>
@@ -43,22 +45,22 @@ namespace NinovaGamesCase.Core
     /// matched with doors, and highlighted. 
     /// Handles all interactions with nodes and doors.
     /// </summary>
-    public class Block : MonoBehaviour
+    public abstract class Block : MonoBehaviour
     {
         public static event Action<Vector2, bool> OnForcedDrop;
-        public static event Action OnMoved;
+        public static Action OnMoved;
         public static event Action OnMoveFailed;
         public static event Action<Door, Block> OnMatched;
 
         [SerializeField] private GameObject _blockMeshPrefab;
 
         public BlockData BlockData { get; private set; }
-        private List<Node> _nodes = new();
+        protected List<Node> _nodes = new();
         private List<Node> _tempNodes = new();
-        private List<BlockMesh> _blockMeshes = new();
+        protected List<BlockMesh> _blockMeshes = new();
         private HighlightEffect _highlightEffect;
 
-        private bool _active = true;
+        protected bool _active = true;
 
         private void Awake()
         {
@@ -120,162 +122,94 @@ namespace NinovaGamesCase.Core
             transform.DOMove(targetPos, .5f).SetEase(Ease.Linear).OnComplete(() => { OnMatched?.Invoke(null, null); });
         }
 
-        /// <summary>
-        /// Prepares the block for dragging by saving its nodes and enabling outline.
-        /// </summary>
-        public void StartDrag()
-        {
-            if (!_active) return;
-
-            OutlineShader(true);
-            ResetNodes(save: true);
-        }
-
-        /// <summary>
-        /// Updates the block’s position while being dragged across the grid.
-        /// </summary>
-        public void Dragging(Vector3 inputPos, Transform grabbedMesh)
-        {
-            if (!_active) return;
-
-            // Try to get a node under the cursor
-            var grabbedNode = Grid.Instance.GetSnappedNode(inputPos)
-                              ?? Grid.Instance.GetClosestAvailableNode(inputPos);
-
-            if (grabbedNode == null)
-            {
-                SnapToCurrentNode();
-                return;
-            }
-
-            // Calculate offset based on grabbed mesh
-            var offset = grabbedNode.WorldPosition - grabbedMesh.position;
-            var desiredPosition = transform.position + offset;
-
-            // Try to find a valid nearby position to place the parent
-            var targetPos = FindClosestValidPosition(grabbedNode, grabbedMesh, desiredPosition);
-
-            if (targetPos.HasValue)
-            {
-                // Smoothly move toward valid position
-                transform.position = Vector3.Lerp(transform.position, targetPos.Value, Time.deltaTime * 10f);
-            }
-            else
-            {
-                SnapToCurrentNode();
-            }
-
-            // Fix Y axis
-            var p = transform.position;
-            p.y = -0.25f;
-            transform.position = p;
-
-            CheckDoorMatch(snapped: false);
-        }
-
+        #region DRAG
+        
+        public abstract void StartDrag();
+        
+        public abstract void Dragging(Vector3 inputPos, Transform grabbedMesh);
+        
+        public abstract void Drop(Node node, bool forced);
 
         /// <summary>
         /// Finds the closest valid position near a grabbed node for placement.
         /// </summary>
-        private Vector3? FindClosestValidPosition(Node grabbedNode, Transform grabbedMesh, Vector3 desiredPos)
+        protected Vector3? FindClosestValidPosition(Node grabbedNode, Transform grabbedMesh, Vector3 desiredPos)
         {
-            // Try ranges from smaller to larger
-            for (var range = 1; range <= 2; range++)
+            var config = LevelManager.CurrentConfig;
+            var nodeSize = config.NodeSize;
+            var meshOffset = transform.rotation * Vector3.Scale(grabbedMesh.localPosition, transform.lossyScale);
+            var basePos = grabbedNode.WorldPosition - meshOffset;
+
+            const int maxRange = 2;
+            Vector3? bestPos = null;
+            var bestDist = float.MaxValue;
+
+            for (var r = 0; r <= maxRange; r++)
             {
-                Vector3? bestPos = null;
-                var closestDist = float.MaxValue;
-
-                for (var dx = -range; dx <= range; dx++)
+                for (var dx = -r; dx <= r; dx++)
+                for (var dz = -r; dz <= r; dz++)
                 {
-                    for (var dz = -range; dz <= range; dz++)
+                    var testPos = basePos + new Vector3(dx * nodeSize.x, 0f, dz * nodeSize.y);
+                    if (!CanPlaceAllMeshesAt(testPos)) continue;
+
+                    var testWorldPos = testPos + meshOffset;
+                    var dist = Vector3.Distance(testWorldPos, grabbedNode.WorldPosition);
+
+                    if (dist < bestDist)
                     {
-                        var testPos = desiredPos + new Vector3(dx, 0, dz);
-
-                        if (!CanPlaceAllMeshesAt(testPos))
-                            continue;
-
-                        var testGrabbedMeshPos = testPos + grabbedMesh.localPosition;
-                        var dist = Vector3.Distance(testGrabbedMeshPos, grabbedNode.WorldPosition);
-
-                        if (dist < closestDist)
-                        {
-                            closestDist = dist;
-                            bestPos = testPos;
-                        }
+                        bestDist = dist;
+                        bestPos = testPos;
                     }
                 }
 
-                if (bestPos.HasValue)
-                    return bestPos; // Early return if found in this range
+                if (bestPos.HasValue) return bestPos;
             }
 
             return null;
         }
-
+        
         /// <summary>
-        /// Snaps the block back to its currently occupied node.
+        /// Checks if all block meshes can be placed at the given parent position.
+        /// Rotation & scale-aware.
         /// </summary>
-        private void SnapToCurrentNode()
-        {
-            var node = Grid.Instance.GetSnappedNode(transform.position);
-            if (node != null)
-                transform.position = node.WorldPosition;
-        }
-
-        /// <summary>
-        /// Checks if all block meshes can be placed at the given world position.
-        /// </summary>
-        private bool CanPlaceAllMeshesAt(Vector3 parentPosition)
+        private bool CanPlaceAllMeshesAt(Vector3 parentPos)
         {
             foreach (var mesh in _blockMeshes)
             {
-                var meshWorldPos = parentPosition + mesh.transform.localPosition;
+                var offset = transform.rotation * Vector3.Scale(mesh.transform.localPosition, transform.lossyScale);
+                var worldPos = parentPos + offset;
 
-                var node = Grid.Instance.GetSnappedNode(meshWorldPos);
-                if (node == null || node.Block)
-                    return false;
-
-                if (mesh.CheckObstacle(meshWorldPos))
+                var node = Grid.Instance.GetSnappedNode(worldPos);
+                if (node == null || node.Block || mesh.CheckObstacle(worldPos))
                     return false;
             }
 
             return true;
         }
-
+        
+        #endregion
+        
+     
         /// <summary>
-        /// Attempts to drop the block onto the given node. 
-        /// If invalid, resets to its temporary saved nodes.
+        /// Snaps the block back to its currently occupied node.
         /// </summary>
-        public void Drop(Node node, bool forced)
+        protected void SnapToCurrentNode()
         {
-            if (!_active) return;
+            var node = Grid.Instance.GetSnappedNode(transform.position);
+            if (node == null) return;
 
-            if (node == null || !TryGetValidNodes(node, out var validNodes))
-            {
-                ResetToTempNodes();
-            }
-            else
-            {
-                _nodes = validNodes;
-                foreach (var n in _nodes)
-                    n.SetBlock(this);
+            var offset = _blockMeshes.Count > 0
+                ? transform.rotation * Vector3.Scale(_blockMeshes[0].transform.localPosition, transform.lossyScale)
+                : Vector3.zero;
 
-                transform.position = _nodes.First().WorldPosition;
-                OnMoved?.Invoke();
-
-                if (forced)
-                    _active = false;
-
-                CheckDoorMatch(snapped: true);
-            }
-
-            OutlineShader(false);
+            transform.position = node.WorldPosition - offset;
+            transform.position = new Vector3(transform.position.x, -0.25f, transform.position.z);
         }
 
         /// <summary>
         /// Clears the current nodes and optionally saves them into a temp list.
         /// </summary>
-        private void ResetNodes(bool save)
+        protected void ResetNodes(bool save)
         {
             if (save) _tempNodes = _nodes.ToList();
             else _tempNodes.Clear();
@@ -289,7 +223,7 @@ namespace NinovaGamesCase.Core
         /// <summary>
         /// Restores nodes from the saved temp list when a move fails.
         /// </summary>
-        private void ResetToTempNodes()
+        protected void ResetToTempNodes()
         {
             _nodes = _tempNodes;
             foreach (var node in _nodes)
@@ -303,7 +237,7 @@ namespace NinovaGamesCase.Core
         /// Validates whether the block can be placed starting at the given pivot node.
         /// Returns the list of valid nodes if successful.
         /// </summary>
-        private bool TryGetValidNodes(Node pivotNode, out List<Node> result)
+        protected bool TryGetValidNodes(Node pivotNode, out List<Node> result)
         {
             result = new();
             var grid = Grid.Instance.GetGrid();
@@ -335,19 +269,19 @@ namespace NinovaGamesCase.Core
         /// Checks whether the block matches with a door,
         /// and triggers forced drop or match event accordingly.
         /// </summary>
-        private void CheckDoorMatch(bool snapped)
+        protected void CheckDoorMatch(bool snapped)
         {
             var matchedDoor = FindMatchingDoor();
             if (matchedDoor == null) return;
 
             var lines = GetUniqueLines(matchedDoor.LevelDoorData.Direction, snapped);
             if (lines.Count > matchedDoor.LevelDoorData.Length) return;
-
+            
             var allLinesMatch = lines.All(line =>
                 matchedDoor.CurrentNodes.Any(node =>
                     (matchedDoor.LevelDoorData.Direction is LevelDoorDirection.Up or LevelDoorDirection.Down)
-                        ? Mathf.RoundToInt(node.WorldPosition.x) == line
-                        : Mathf.RoundToInt(node.WorldPosition.z) == line));
+                        ? node.WorldPosition.x == line
+                        : node.WorldPosition.z == line));
 
             if (!allLinesMatch) return;
 
@@ -375,22 +309,22 @@ namespace NinovaGamesCase.Core
         /// Returns unique line keys (x or z coordinates) 
         /// based on door direction and snap state.
         /// </summary>
-        private HashSet<int> GetUniqueLines(LevelDoorDirection direction, bool snapped)
+        private HashSet<float> GetUniqueLines(LevelDoorDirection direction, bool snapped)
         {
-            var lines = new HashSet<int>();
+            var lines = new HashSet<float>();
 
             if (!snapped)
             {
                 var pivot = Grid.Instance.GetSnappedNode(transform.position);
                 lines.Add(GetLineKey(pivot.WorldPosition, direction));
 
-                foreach (Transform child in transform)
-                    lines.Add(GetLineKey(pivot.WorldPosition + child.localPosition, direction));
+                foreach (var child in _blockMeshes)
+                    lines.Add(GetLineKey(pivot.WorldPosition + child.transform.localPosition, direction));
             }
             else
             {
-                foreach (Transform child in transform)
-                    lines.Add(GetLineKey(child.position, direction));
+                foreach (var child in _blockMeshes)
+                    lines.Add(GetLineKey(child.transform.position, direction));
             }
 
             return lines;
@@ -399,17 +333,19 @@ namespace NinovaGamesCase.Core
         /// <summary>
         /// Computes a line key (x or z) from world position depending on door direction.
         /// </summary>
-        private int GetLineKey(Vector3 pos, LevelDoorDirection dir)
+        private float GetLineKey(Vector3 pos, LevelDoorDirection dir)
         {
-            return (dir is LevelDoorDirection.Up or LevelDoorDirection.Down)
-                ? Mathf.RoundToInt(pos.x)
-                : Mathf.RoundToInt(pos.z);
+            var s = (dir is LevelDoorDirection.Up or LevelDoorDirection.Down)
+                ? pos.x
+                : pos.z;
+            
+            return s;
         }
 
         /// <summary>
         /// Toggles the block’s outline highlight effect.
         /// </summary>
-        private void OutlineShader(bool state)
+        protected void OutlineShader(bool state)
         {
             if (_highlightEffect != null)
                 _highlightEffect.highlighted = state;

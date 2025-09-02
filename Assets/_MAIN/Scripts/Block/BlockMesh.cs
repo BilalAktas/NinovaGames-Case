@@ -15,6 +15,7 @@ namespace NinovaGamesCase.Core
         [SerializeField] private LayerMask _doorLayer;
         private BoxCollider _collider;
         
+        
         private void Awake()
         {
             _render = GetComponent<MeshRenderer>();
@@ -98,15 +99,6 @@ namespace NinovaGamesCase.Core
             var castDistance = Vector3.Distance(origin, newPos);
             
              RaycastHit hit;
-            // var hasHit = Physics.BoxCast(
-            //     origin,
-            //     halfExtents,
-            //     dir,
-            //     out hit,
-            //     transform.rotation,
-            //     castDistance
-            // );
-          
             
             var radius = Mathf.Min(halfExtents.x, halfExtents.z);
             var hasHit = Physics.SphereCast(
