@@ -61,6 +61,8 @@ namespace NinovaGamesCase.Core
         private HighlightEffect _highlightEffect;
 
         protected bool _active = true;
+        
+        protected const float _MOVE_SPEED = 10f;
 
         private void Awake()
         {

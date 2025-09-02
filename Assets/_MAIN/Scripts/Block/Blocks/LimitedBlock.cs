@@ -77,7 +77,7 @@ namespace NinovaGamesCase.Core
 
             if (targetPos.HasValue)
             {
-                transform.position = Vector3.MoveTowards(transform.position, targetPos.Value, 10f * Time.deltaTime);
+                transform.position = Vector3.Lerp(transform.position, targetPos.Value, _MOVE_SPEED * Time.deltaTime);
 
                 var p = transform.position;
                 p.y = -0.25f;
