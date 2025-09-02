@@ -20,7 +20,7 @@ All mechanics were created from scratch using Unity 2022.3.5f1.
 
 * Timer-based lose condition
 
-Basic UI with:
+* Basic UI with:
 
   * Timer
 
